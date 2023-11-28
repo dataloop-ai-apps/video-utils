@@ -1,0 +1,83 @@
+{
+  "displayName": "[Video Utils] - Stitching",
+  "name": "video-utils-stitching",
+  "version": "v1.0.0",
+  "components": {
+    "pipelineNodes": [
+      {
+        "invoke": {
+          "type": "function",
+          "namespace": "frames_to_video.frames-to-video.frames-to-vid"
+        },
+        "categories": [
+          "video-utils"
+        ]
+      }
+    ],
+    "modules": [
+        {
+        "name": "frames-to-video",
+        "entryPoint": "frames_to_video.py",
+        "className": "ServiceRunner",
+        "initInputs": [],
+        "functions": [
+          {
+            "name": "frames_to_vid",
+            "description": "frames to video tool",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "Json",
+                "name": "dql_filter"
+              },
+              {
+                "type": "String",
+                "name": "output_folder"
+              },
+              {
+                "type": "String",
+                "name": "output_video_type"
+              },
+              {
+                "type": "Integer",
+                "name": "fps"
+              }
+            ],
+            "displayIcon": "qa-sampling",
+            "displayName": "Frames to Video"
+          }
+        ]
+      }
+    ],
+    "services": [
+      {
+        "name": "frames_to_video",
+        "moduleName": "frames-to-video",
+        "runtime": {
+          "podType": "regular-xs",
+          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
+          "numReplicas": 1,
+          "concurrency": 10,
+          "pyPackages": {},
+          "singleAgent": false,
+          "autoscaler": {
+            "type": "rabbitmq",
+            "minReplicas": 1,
+            "maxReplicas": 2,
+            "queueLength": 10
+          },
+          "preemptible": false
+        },
+        "maxAttempts": 3,
+        "executionTimeout": 172800,
+        "drainTime": 600,
+        "onReset": "failed",
+        "runExecutionAsProcess": false,
+        "operation": "none"
+      }
+    ]
+  }
+}

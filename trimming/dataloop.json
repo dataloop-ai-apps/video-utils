@@ -1,0 +1,79 @@
+{
+  "displayName": "[Video Utils] - Trimming",
+  "name": "video-utils-trimming",
+  "version": "v1.0.0",
+  "components": {
+    "pipelineNodes": [
+      {
+        "invoke": {
+          "type": "function",
+          "namespace": "video_to_frames.video-to-frames.vid_to_frames"
+        },
+        "categories": [
+          "video-utils"
+        ]
+      }
+    ],
+    "modules": [
+      {
+        "name": "video-to-frames",
+        "entryPoint": "video_to_frames.py",
+        "className": "ServiceRunner",
+        "initInputs": [],
+        "functions": [
+          {
+            "name": "vid_to_frames",
+            "description": "video splitting tool",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "String",
+                "name": "output_folder"
+              },
+              {
+                "type": "String",
+                "name": "mode"
+              },
+              {
+                "type": "Integer",
+                "name": "splitter_arg"
+              }
+            ],
+            "displayIcon": "qa-sampling",
+            "displayName": "Video to Frames"
+          }
+        ]
+      }
+    ],
+    "services": [
+      {
+        "name": "video_to_frames",
+        "moduleName": "video-to-frames",
+        "runtime": {
+          "podType": "regular-xs",
+          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
+          "numReplicas": 1,
+          "concurrency": 10,
+          "pyPackages": {},
+          "singleAgent": false,
+          "autoscaler": {
+            "type": "rabbitmq",
+            "minReplicas": 1,
+            "maxReplicas": 2,
+            "queueLength": 10
+          },
+          "preemptible": false
+        },
+        "maxAttempts": 3,
+        "executionTimeout": 172800,
+        "drainTime": 600,
+        "onReset": "failed",
+        "runExecutionAsProcess": false,
+        "operation": "none"
+      }
+    ]
+  }
+}
