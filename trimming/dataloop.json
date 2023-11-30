@@ -21,6 +21,15 @@
         "categories": [
           "video-utils"
         ]
+      },
+      {
+        "invoke": {
+          "type": "function",
+          "namespace": "smart-subsampling.smart-subsampling.video_to_frames_smart_subsampling"
+        },
+        "categories": [
+          "video-utils"
+        ]
       }
     ],
     "modules": [
@@ -91,6 +100,38 @@
             "displayName": "Video To Videos Split"
           }
         ]
+      },
+      {
+        "name": "smart-subsampling",
+        "entryPoint": "smart_subsampling/smart_subsampling.py",
+        "className": "ServiceRunner",
+        "initInputs": [],
+        "functions": [
+          {
+            "name": "video_to_frames_smart_subsampling",
+            "description": "video splitting by similarity",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "String",
+                "name": "output_folder"
+              },
+              {
+                "type": "Float",
+                "name": "threshold"
+              },
+              {
+                "type": "Integer",
+                "name": "window_size"
+              }
+            ],
+            "displayIcon": "qa-sampling",
+            "displayName": "Smart Subsampling - Video to Frames"
+          }
+        ]
       }
     ],
     "services": [
@@ -126,6 +167,31 @@
           "podType": "regular-xs",
           "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
           "numReplicas": 1,
+          "concurrency": 10,
+          "pyPackages": {},
+          "singleAgent": false,
+          "autoscaler": {
+            "type": "rabbitmq",
+            "minReplicas": 0,
+            "maxReplicas": 2,
+            "queueLength": 10
+          },
+          "preemptible": false
+        },
+        "maxAttempts": 3,
+        "executionTimeout": 172800,
+        "drainTime": 600,
+        "onReset": "failed",
+        "runExecutionAsProcess": false,
+        "operation": "none"
+      },
+      {
+        "name": "smart-subsampling",
+        "moduleName": "smart-subsampling",
+        "runtime": {
+          "podType": "regular-xs",
+          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
+          "numReplicas": 0,
           "concurrency": 10,
           "pyPackages": {},
           "singleAgent": false,
