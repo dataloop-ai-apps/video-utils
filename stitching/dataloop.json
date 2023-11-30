@@ -7,7 +7,16 @@
       {
         "invoke": {
           "type": "function",
-          "namespace": "frames_to_video.frames-to-video.frames-to-vid"
+          "namespace": "frames-to-video.frames-to-video.frames_to_vid"
+        },
+        "categories": [
+          "video-utils"
+        ]
+      },
+      {
+        "invoke": {
+          "type": "function",
+          "namespace": "videos-to-video.videos-to-video.videos_to_video"
         },
         "categories": [
           "video-utils"
@@ -15,9 +24,9 @@
       }
     ],
     "modules": [
-        {
+      {
         "name": "frames-to-video",
-        "entryPoint": "frames_to_video.py",
+        "entryPoint": "frames_to_video/frames_to_video.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
@@ -47,14 +56,42 @@
               }
             ],
             "displayIcon": "qa-sampling",
-            "displayName": "Frames to Video"
+            "displayName": "Frames to Video Merge"
+          }
+        ]
+      },
+      {
+        "name": "videos-to-video",
+        "entryPoint": "videos_to_video/videos_to_video.py",
+        "className": "ServiceRunner",
+        "initInputs": [],
+        "functions": [
+          {
+            "name": "videos_to_video",
+            "description": "videos to video tool",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "Json",
+                "name": "dql_filter"
+              },
+              {
+                "type": "String",
+                "name": "output_folder"
+              }
+            ],
+            "displayIcon": "qa-sampling",
+            "displayName": "Videos to Video Merge"
           }
         ]
       }
     ],
     "services": [
       {
-        "name": "frames_to_video",
+        "name": "frames-to-video",
         "moduleName": "frames-to-video",
         "runtime": {
           "podType": "regular-xs",
@@ -65,7 +102,32 @@
           "singleAgent": false,
           "autoscaler": {
             "type": "rabbitmq",
-            "minReplicas": 1,
+            "minReplicas": 0,
+            "maxReplicas": 2,
+            "queueLength": 10
+          },
+          "preemptible": false
+        },
+        "maxAttempts": 3,
+        "executionTimeout": 172800,
+        "drainTime": 600,
+        "onReset": "failed",
+        "runExecutionAsProcess": false,
+        "operation": "none"
+      },
+      {
+        "name": "videos-to-video",
+        "moduleName": "videos-to-video",
+        "runtime": {
+          "podType": "regular-xs",
+          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
+          "numReplicas": 1,
+          "concurrency": 10,
+          "pyPackages": {},
+          "singleAgent": false,
+          "autoscaler": {
+            "type": "rabbitmq",
+            "minReplicas": 0,
             "maxReplicas": 2,
             "queueLength": 10
           },

@@ -7,7 +7,16 @@
       {
         "invoke": {
           "type": "function",
-          "namespace": "video_to_frames.video-to-frames.vid_to_frames"
+          "namespace": "video-to-frames.video-to-frames.video_to_frames"
+        },
+        "categories": [
+          "video-utils"
+        ]
+      },
+      {
+        "invoke": {
+          "type": "function",
+          "namespace": "video-to-videos.video-to-videos.video_to_videos"
         },
         "categories": [
           "video-utils"
@@ -17,12 +26,12 @@
     "modules": [
       {
         "name": "video-to-frames",
-        "entryPoint": "video_to_frames.py",
+        "entryPoint": "video_to_frames/video_to_frames.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
           {
-            "name": "vid_to_frames",
+            "name": "video_to_frames",
             "description": "video splitting tool",
             "input": [
               {
@@ -43,14 +52,50 @@
               }
             ],
             "displayIcon": "qa-sampling",
-            "displayName": "Video to Frames"
+            "displayName": "Video to Frames Split"
+          }
+        ]
+      },
+      {
+        "name": "video-to-videos",
+        "entryPoint": "video_to_videos/video_to_videos.py",
+        "className": "ServiceRunner",
+        "initInputs": [],
+        "functions": [
+          {
+            "name": "video_to_videos",
+            "description": "video to videos splitting tool",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "String",
+                "name": "output_folder"
+              },
+              {
+                "type": "String",
+                "name": "mode"
+              },
+              {
+                "type": "Integer",
+                "name": "splitter_arg"
+              },
+              {
+                "type": "Integer",
+                "name": "n_overlap"
+              }
+            ],
+            "displayIcon": "qa-sampling",
+            "displayName": "Video To Videos Split"
           }
         ]
       }
     ],
     "services": [
       {
-        "name": "video_to_frames",
+        "name": "video-to-frames",
         "moduleName": "video-to-frames",
         "runtime": {
           "podType": "regular-xs",
@@ -61,7 +106,32 @@
           "singleAgent": false,
           "autoscaler": {
             "type": "rabbitmq",
-            "minReplicas": 1,
+            "minReplicas": 0,
+            "maxReplicas": 2,
+            "queueLength": 10
+          },
+          "preemptible": false
+        },
+        "maxAttempts": 3,
+        "executionTimeout": 172800,
+        "drainTime": 600,
+        "onReset": "failed",
+        "runExecutionAsProcess": false,
+        "operation": "none"
+      },
+      {
+        "name": "video-to-videos",
+        "moduleName": "video-to-videos",
+        "runtime": {
+          "podType": "regular-xs",
+          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
+          "numReplicas": 1,
+          "concurrency": 10,
+          "pyPackages": {},
+          "singleAgent": false,
+          "autoscaler": {
+            "type": "rabbitmq",
+            "minReplicas": 0,
             "maxReplicas": 2,
             "queueLength": 10
           },

@@ -111,7 +111,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         os.mkdir(folder)
 
     @staticmethod
-    def vid_to_frames(item, output_folder, mode, splitter_arg):
+    def video_to_frames(item, output_folder, mode, splitter_arg):
         """
         splits video by given mode
         :param item: the video item to split
