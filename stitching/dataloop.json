@@ -1,7 +1,8 @@
 {
   "displayName": "[Video Utils] - Stitching",
   "name": "video-utils-stitching",
-  "version": "v1.0.0",
+  "version": "1.0.0",
+  "scope": "public",
   "components": {
     "pipelineNodes": [
       {
