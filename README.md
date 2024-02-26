@@ -17,7 +17,7 @@ The Application provides the following trimming functions:
 1. `video_to_frames` - to split the original video item to frames and clone the annotations to them from the original video.
 2. `video_to_videos` - to split the original video item to video segments and clone the annotations to them from the original video.
 3. `video_to_frames_smart_subsampling` - to split the original video to segments using `structural_similarity` logic 
-   from `skimage` library. 
+   from `skimage.metrics` library. 
 
 ## Requirements
 
