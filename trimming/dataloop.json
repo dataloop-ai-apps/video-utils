@@ -1,6 +1,7 @@
 {
   "displayName": "[Video Utils] - Trimming",
   "name": "video-utils-trimming",
+  "description": "Video Utils - Trimming is a collection of functions for video manipulation. The package includes functions for video splitting, video to videos splitting, and smart subsampling.",
   "version": "1.1.0",
   "codebase": {
     "type": "git",
@@ -11,6 +12,7 @@
   "components": {
     "pipelineNodes": [
       {
+        "name": "video-to-frames",
         "invoke": {
           "type": "function",
           "namespace": "video-to-frames.video-to-frames.video_to_frames"
@@ -20,6 +22,7 @@
         ]
       },
       {
+        "name": "video-to-videos",
         "invoke": {
           "type": "function",
           "namespace": "video-to-videos.video-to-videos.video_to_videos"
@@ -29,6 +32,7 @@
         ]
       },
       {
+        "name": "smart-subsampling",
         "invoke": {
           "type": "function",
           "namespace": "smart-subsampling.smart-subsampling.video_to_frames_smart_subsampling"
