@@ -2,11 +2,11 @@
   "displayName": "[Video Utils] - Stitching",
   "name": "video-utils-stitching",
   "description": "Video Utils - Stitching is a collection of tools for video manipulation. It includes tools for merging frames into a video and merging videos into a single video.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "codebase": {
     "type": "git",
     "gitUrl": "https://github.com/dataloop-ai-apps/video-utils.git",
-    "gitTag": "1.1.0"
+    "gitTag": "1.1.1"
   },
   "scope": "public",
   "components": {
