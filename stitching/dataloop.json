@@ -2,6 +2,11 @@
   "displayName": "[Video Utils] - Stitching",
   "name": "video-utils-stitching",
   "version": "1.0.0",
+  "codebase": {
+    "type": "git",
+    "gitUrl": "https://github.com/dataloop-ai-apps/video-utils.git",
+    "gitTag": "1.0.0"
+  },
   "scope": "public",
   "components": {
     "pipelineNodes": [
