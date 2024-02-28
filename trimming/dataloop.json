@@ -12,6 +12,7 @@
   "components": {
     "pipelineNodes": [
       {
+        "scope": "node",
         "name": "video-to-frames",
         "invoke": {
           "type": "function",
@@ -22,6 +23,7 @@
         ]
       },
       {
+        "scope": "node",
         "name": "video-to-videos",
         "invoke": {
           "type": "function",
@@ -32,6 +34,7 @@
         ]
       },
       {
+        "scope": "node",
         "name": "smart-subsampling",
         "invoke": {
           "type": "function",

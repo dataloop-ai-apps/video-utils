@@ -12,6 +12,7 @@
   "components": {
     "pipelineNodes": [
       {
+        "scope": "node",
         "name": "frames-to-video",
         "invoke": {
           "type": "function",
@@ -22,6 +23,7 @@
         ]
       },
       {
+        "scope": "node",
         "name": "videos-to-video",
         "invoke": {
           "type": "function",
