@@ -129,16 +129,18 @@ class ServiceRunner(dl.BaseServiceRunner):
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         if mode == "frames_interval":
-            ServiceRunner.video_split_by_frames_interval(input_video, item, local_output_folder, output_folder,
-                                                         total_frames, splitter_arg)
+            frame_items = ServiceRunner.video_split_by_frames_interval(input_video, item, local_output_folder,
+                                                                       output_folder, total_frames, splitter_arg)
         elif mode == "num_splits":
-            ServiceRunner.video_split_by_num_splits(input_video, item, local_output_folder, output_folder, total_frames,
-                                                    splitter_arg)
+            frame_items = ServiceRunner.video_split_by_num_splits(input_video, item, local_output_folder, output_folder,
+                                                                  total_frames, splitter_arg)
         elif mode == "seconds_interval":
-            ServiceRunner.video_split_by_seconds_interval(input_video, item, local_output_folder, output_folder,
-                                                          total_frames,
-                                                          splitter_arg)
+            frame_items = ServiceRunner.video_split_by_seconds_interval(input_video, item, local_output_folder,
+                                                                        output_folder, total_frames, splitter_arg)
         else:
             assert False, "mode can only be frames_interval or num_splits or seconds_interval"
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
+
+        # TODO
+        return item, frame_items
