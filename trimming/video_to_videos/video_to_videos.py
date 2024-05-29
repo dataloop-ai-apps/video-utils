@@ -220,13 +220,3 @@ class ServiceRunner(dl.BaseServiceRunner):
                 sub_video_item.metadata['user'] = dict()
             sub_video_item.metadata['user']['parentItemId'] = item.id
         return item, sub_videos_items
-
-
-sr = ServiceRunner()
-sr.video_to_videos(
-    item=dl.items.get(item_id="66574a344920b082b6670e09"),
-    output_folder=None,
-    mode="num_splits",
-    splitter_arg=100,
-    n_overlap=0
-)
