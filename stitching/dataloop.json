@@ -6,6 +6,7 @@
   "components": {
     "pipelineNodes": [
       {
+        "name": "frames_to_video_merge",
         "invoke": {
           "type": "function",
           "namespace": "frames-to-video.frames-to-video.frames_to_vid"
@@ -15,6 +16,7 @@
         ]
       },
       {
+        "name": "videos_to_video_merge",
         "invoke": {
           "type": "function",
           "namespace": "videos-to-video.videos-to-video.videos_to_video"

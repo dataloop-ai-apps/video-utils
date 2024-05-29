@@ -6,6 +6,7 @@
   "components": {
     "pipelineNodes": [
       {
+        "name": "video_to_frames_split",
         "invoke": {
           "type": "function",
           "namespace": "video-to-frames.video-to-frames.video_to_frames"
@@ -15,6 +16,7 @@
         ]
       },
       {
+        "name": "video_to_videos_split",
         "invoke": {
           "type": "function",
           "namespace": "video-to-videos.video-to-videos.video_to_videos"
@@ -24,6 +26,7 @@
         ]
       },
       {
+        "name": "smart_subsampling_video_to_frames",
         "invoke": {
           "type": "function",
           "namespace": "smart-subsampling.smart-subsampling.video_to_frames_smart_subsampling"
