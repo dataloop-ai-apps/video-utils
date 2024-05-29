@@ -64,5 +64,4 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         print(f'Uploaded {frame_count + 1}/{int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))} frames successfully.')
         os.remove(video)
-
         return item, frame_items

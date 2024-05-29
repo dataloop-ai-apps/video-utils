@@ -73,6 +73,16 @@
                 "name": "splitter_arg"
               }
             ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "Item[]",
+                "name": "items"
+              }
+            ],
             "displayIcon": "qa-sampling",
             "displayName": "Video to Frames Split"
           }
@@ -109,6 +119,16 @@
                 "name": "n_overlap"
               }
             ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "Item[]",
+                "name": "items"
+              }
+            ],
             "displayIcon": "qa-sampling",
             "displayName": "Video To Videos Split"
           }
@@ -139,6 +159,16 @@
               {
                 "type": "Integer",
                 "name": "window_size"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "Item[]",
+                "name": "items"
               }
             ],
             "displayIcon": "qa-sampling",

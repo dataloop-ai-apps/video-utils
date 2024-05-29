@@ -212,5 +212,4 @@ class ServiceRunner(dl.BaseServiceRunner):
         ServiceRunner.upload_annotations(sub_videos_annotations_info, sub_videos_items, item.fps)
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
-
         return item, sub_videos_items

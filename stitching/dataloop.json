@@ -66,6 +66,12 @@
                 "name": "fps"
               }
             ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
             "displayIcon": "qa-sampling",
             "displayName": "Frames to Video Merge"
           }
@@ -92,6 +98,12 @@
               {
                 "type": "String",
                 "name": "output_folder"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
               }
             ],
             "displayIcon": "qa-sampling",

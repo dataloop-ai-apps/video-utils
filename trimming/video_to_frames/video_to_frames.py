@@ -24,6 +24,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param frames_interval: the frames interval to split by
         """
         assert frames_interval > 0, "frames_interval must be greater then 0"
+        frame_items = list()
         item_dataset = video_item.dataset
         annotations = video_item.annotations.list()
 
@@ -44,6 +45,7 @@ class ServiceRunner(dl.BaseServiceRunner):
                                           f"{input_base_name}_{str(frame_count).zfill(max_fc_len)}_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.jpg")
                 cv2.imwrite(frame_path, frame)
                 frame_item = item_dataset.items.upload(local_path=frame_path, remote_path=dl_output_folder)
+                frame_items.append(frame_item)
                 if annotations:
                     frame_annotation = annotations.get_frame(frame_num=frame_count)
                     builder = frame_item.annotations.builder()
@@ -63,6 +65,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         # Release the video file
         cap.release()
+        return frame_items
 
     @staticmethod
     def video_split_by_seconds_interval(video_path, item, output_directory, dl_output_folder, total_frames,
@@ -80,8 +83,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         cap = cv2.VideoCapture(video_path)
         fps = int(cap.get(cv2.CAP_PROP_FPS))
         cap.release()
-        ServiceRunner.video_split_by_frames_interval(video_path, item, output_directory, dl_output_folder, total_frames,
-                                                     fps * seconds_interval)
+        frame_items = ServiceRunner.video_split_by_frames_interval(video_path, item, output_directory, dl_output_folder,
+                                                                   total_frames, fps * seconds_interval)
+        return frame_items
 
     @staticmethod
     def video_split_by_num_splits(video_path, item, output_directory, dl_output_folder, total_frames, num_splits):
@@ -97,8 +101,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         assert num_splits > 1, "num_splits must be greater then 1"
         assert num_splits <= total_frames, "total frames count must be greater then num_splits"
         frames_interval = total_frames // (num_splits - 1) - (0 if total_frames % (num_splits - 1) else 1)
-        ServiceRunner.video_split_by_frames_interval(video_path, item, output_directory, dl_output_folder, total_frames,
-                                                     frames_interval)
+        frame_items = ServiceRunner.video_split_by_frames_interval(video_path, item, output_directory, dl_output_folder,
+                                                                   total_frames, frames_interval)
+        return frame_items
 
     @staticmethod
     def create_folder(folder):
@@ -141,6 +146,4 @@ class ServiceRunner(dl.BaseServiceRunner):
             assert False, "mode can only be frames_interval or num_splits or seconds_interval"
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
-
-        # TODO
         return item, frame_items
