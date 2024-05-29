@@ -212,4 +212,10 @@ class ServiceRunner(dl.BaseServiceRunner):
         ServiceRunner.upload_annotations(sub_videos_annotations_info, sub_videos_items, item.fps)
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
+
+        # Updating metadata (required for Waiting Node)
+        for sub_video_item in sub_videos_items:
+            if sub_video_item.metadata.get('user'):
+                sub_video_item.metadata['user'] = dict()
+            sub_video_item.metadata['user']['parentItemId'] = item.id
         return item, sub_videos_items

@@ -155,7 +155,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         local_output_folder = "output_folder" + str(threading.get_native_id())
         ServiceRunner.create_folder(local_input_folder)
         ServiceRunner.create_folder(local_output_folder)
-        filters = dl.Filters(custom_filter=dql_filter)
+
+        if dql_filter is None:
+            filters = dl.Filters()
+            filters.add(field='metadata.user.parentItemId', values=item.id)
+        else:
+            filters = dl.Filters(custom_filter=dql_filter)
         filters.sort_by(field='name')
         items = dataset.items.get_all_items(filters=filters)
         if not items or len(items) == 0:

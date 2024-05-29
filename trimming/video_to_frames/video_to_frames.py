@@ -146,4 +146,10 @@ class ServiceRunner(dl.BaseServiceRunner):
             assert False, "mode can only be frames_interval or num_splits or seconds_interval"
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
+
+        # Updating metadata (required for Waiting Node)
+        for frame_item in frame_items:
+            if frame_item.metadata.get('user'):
+                frame_item.metadata['user'] = dict()
+            frame_item.metadata['user']['parentItemId'] = item.id
         return item, frame_items

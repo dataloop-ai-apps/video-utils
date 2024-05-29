@@ -64,4 +64,10 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         print(f'Uploaded {frame_count + 1}/{int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))} frames successfully.')
         os.remove(video)
+
+        # Updating metadata (required for Waiting Node)
+        for frame_item in frame_items:
+            if frame_item.metadata.get('user'):
+                frame_item.metadata['user'] = dict()
+            frame_item.metadata['user']['parentItemId'] = item.id
         return item, frame_items
