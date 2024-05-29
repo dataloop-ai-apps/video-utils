@@ -66,6 +66,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         os.remove(video)
 
         # Updating metadata (required for Waiting Node)
+        frame_items = list(frame_items)
         for frame_item in frame_items:
             if frame_item.metadata.get('user'):
                 frame_item.metadata['user'] = dict()

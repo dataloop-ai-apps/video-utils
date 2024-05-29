@@ -148,6 +148,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         shutil.rmtree(local_output_folder, ignore_errors=True)
 
         # Updating metadata (required for Waiting Node)
+        frame_items = list(frame_items)
         for frame_item in frame_items:
             if frame_item.metadata.get('user'):
                 frame_item.metadata['user'] = dict()

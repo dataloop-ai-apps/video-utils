@@ -214,6 +214,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         shutil.rmtree(local_output_folder, ignore_errors=True)
 
         # Updating metadata (required for Waiting Node)
+        sub_videos_items = list(sub_videos_items)
         for sub_video_item in sub_videos_items:
             if sub_video_item.metadata.get('user'):
                 sub_video_item.metadata['user'] = dict()
