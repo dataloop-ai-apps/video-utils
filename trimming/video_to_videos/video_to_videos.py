@@ -218,5 +218,3 @@ class ServiceRunner(dl.BaseServiceRunner):
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
         return item, sub_videos_items
-
-
