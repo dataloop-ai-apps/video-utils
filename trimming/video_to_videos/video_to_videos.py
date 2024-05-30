@@ -191,7 +191,7 @@ class ServiceRunner(dl.BaseServiceRunner):
                                           "right": ann.right,
                                           "label": ann.label,
                                           "object_visible": ann.object_visible,
-                                          "object_id": int(ann.id, 16)} for ann in frame_annotation]
+                                          "object_id": ann.object_id} for ann in frame_annotation]
                 sub_videos_annotations_info[sub_video_name].append([sub_video_frame_count, frame_annotation_data])
                 ret, frame = cap.read()
                 if ret:
@@ -218,3 +218,5 @@ class ServiceRunner(dl.BaseServiceRunner):
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
         return item, sub_videos_items
+
+
