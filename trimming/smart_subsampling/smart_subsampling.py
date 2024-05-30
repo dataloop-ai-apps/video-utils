@@ -10,9 +10,10 @@ class ServiceRunner(dl.BaseServiceRunner):
         ...
 
     @staticmethod
-    def upload_frame(frame, fc, input_base_name, output_folder, dataset):
+    def upload_frame(item, frame, fc, input_base_name, output_folder, dataset):
         """
         uploads frame to Dataloop
+        :param item: the video item, where the frames are taken from
         :param frame: the frame to upload
         :param fc: the number of the frame
         :param input_base_name: the base name of the frame
@@ -21,7 +22,11 @@ class ServiceRunner(dl.BaseServiceRunner):
         """
         tmp_file = f"{input_base_name}_{fc}_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.jpg"
         cv2.imwrite(tmp_file, frame)  # save frame as JPEG file
-        frame_item = dataset.items.upload(local_path=tmp_file, remote_path=output_folder)
+        frame_item = dataset.items.upload(local_path=tmp_file,
+                                          remote_path=output_folder,
+                                          item_metadata={
+                                              "user": {"parentItemId": item.id}
+                                          })
         os.remove(tmp_file)
         return frame_item
 
@@ -46,7 +51,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         success, frame_rgb = vidcap.read()
         reference = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2GRAY)
-        frame_item = ServiceRunner.upload_frame(frame_rgb, str(frame_count).zfill(max_fc_len), input_base_name,
+        frame_item = ServiceRunner.upload_frame(item, frame_rgb, str(frame_count).zfill(max_fc_len), input_base_name,
                                                 output_folder, dataset)
         frame_items.append(frame_item)
         success, frame_rgb = vidcap.read()
@@ -56,18 +61,12 @@ class ServiceRunner(dl.BaseServiceRunner):
             ssim = structural_similarity(reference, frame_gray, win_size=window_size)
             if ssim <= threshold:
                 frame_count += 1
-                frame_item = ServiceRunner.upload_frame(frame_rgb, str(frame_count).zfill(max_fc_len), input_base_name,
-                                                        output_folder, dataset)
+                frame_item = ServiceRunner.upload_frame(item, frame_rgb, str(frame_count).zfill(max_fc_len),
+                                                        input_base_name, output_folder, dataset)
                 frame_items.append(frame_item)
                 reference = frame_gray
             success, frame_rgb = vidcap.read()
 
         print(f'Uploaded {frame_count + 1}/{int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))} frames successfully.')
         os.remove(video)
-
-        # Updating metadata (required for Waiting Node)
-        for frame_item in frame_items:
-            if frame_item.metadata.get('user'):
-                frame_item.metadata['user'] = dict()
-            frame_item.metadata['user']['parentItemId'] = item.id
         return item, frame_items

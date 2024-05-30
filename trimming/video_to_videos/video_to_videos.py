@@ -209,10 +209,12 @@ class ServiceRunner(dl.BaseServiceRunner):
                                                          "origin_video_name": f"{input_base_name}.{video_type}",
                                                          "time": datetime.datetime.now().isoformat(),
                                                          "sub_videos_intervals": sub_videos_intervals,
-                                                         "user": {"parentItemId": item.id}
+                                                         "fps": fps,
+                                                         "startTime": 0,
+                                                         "user": {"parentItemId": item.id},
                                                      })
         sub_videos_items = list(sub_videos_items)
-        ServiceRunner.upload_annotations(sub_videos_annotations_info, sub_videos_items, item.fps)
+        ServiceRunner.upload_annotations(sub_videos_annotations_info, sub_videos_items, fps)
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
         return item, sub_videos_items
