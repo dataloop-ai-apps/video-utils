@@ -44,7 +44,11 @@ class ServiceRunner(dl.BaseServiceRunner):
                 frame_path = os.path.join(output_directory,
                                           f"{input_base_name}_{str(frame_count).zfill(max_fc_len)}_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.jpg")
                 cv2.imwrite(frame_path, frame)
-                frame_item = item_dataset.items.upload(local_path=frame_path, remote_path=dl_output_folder)
+                frame_item = item_dataset.items.upload(local_path=frame_path,
+                                                       remote_path=dl_output_folder,
+                                                       item_metadata={
+                                                           "user": {"parentItemId": video_item.id}
+                                                       })
                 frame_items.append(frame_item)
                 if annotations:
                     frame_annotation = annotations.get_frame(frame_num=frame_count)
@@ -146,11 +150,4 @@ class ServiceRunner(dl.BaseServiceRunner):
             assert False, "mode can only be frames_interval or num_splits or seconds_interval"
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
-
-        # Updating metadata (required for Waiting Node)
-        frame_items = list(frame_items)
-        for frame_item in frame_items:
-            if frame_item.metadata.get('user'):
-                frame_item.metadata['user'] = dict()
-            frame_item.metadata['user']['parentItemId'] = item.id
         return item, frame_items

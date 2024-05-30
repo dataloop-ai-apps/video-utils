@@ -208,15 +208,21 @@ class ServiceRunner(dl.BaseServiceRunner):
                                                      item_metadata={
                                                          "origin_video_name": f"{input_base_name}.{video_type}",
                                                          "time": datetime.datetime.now().isoformat(),
-                                                         "sub_videos_intervals": sub_videos_intervals})
+                                                         "sub_videos_intervals": sub_videos_intervals,
+                                                         "user": {"parentItemId": item.id}
+                                                     })
         sub_videos_items = list(sub_videos_items)
         ServiceRunner.upload_annotations(sub_videos_annotations_info, sub_videos_items, item.fps)
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
-
-        # Updating metadata (required for Waiting Node)
-        for sub_video_item in sub_videos_items:
-            if sub_video_item.metadata.get('user'):
-                sub_video_item.metadata['user'] = dict()
-            sub_video_item.metadata['user']['parentItemId'] = item.id
         return item, sub_videos_items
+
+
+sr = ServiceRunner()
+sr.video_to_videos(
+    item=dl.items.get(item_id="66575891b7f45f3d5d93d0ed"),
+    output_folder=None,
+    mode="num_frames",
+    splitter_arg=100,
+    n_overlap=0
+)
