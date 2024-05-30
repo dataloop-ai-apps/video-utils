@@ -20,7 +20,65 @@
         },
         "categories": [
           "video-utils"
-        ]
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "output_folder",
+              "title": "Output Folder",
+              "props": {
+                "type": "string",
+                "required": false
+              },
+              "default": "/",
+              "widget": "dl-input"
+            },
+            {
+              "name": "mode",
+              "title": "Trimming by Mode",
+              "props": {
+                "type": "string",
+                "required": true
+              },
+              "options": [
+                {
+                  "label": "Number of Frames",
+                  "value": "num_frames"
+                },
+                {
+                  "label": "Number of Splits",
+                  "value": "num_splits"
+                },
+                {
+                  "label": "Length by Seconds",
+                  "value": "out_length"
+                }
+              ],
+              "default": "num_frames",
+              "widget": "dl-select"
+            },
+            {
+              "name": "splitter_arg",
+              "title": "Splitter Argument",
+              "props": {
+                "type": "integer",
+                "required": false
+              },
+              "default": 100,
+              "widget": "dl-input"
+            },
+            {
+              "name": "n_overlap",
+              "title": "Number of Overlapping Frames",
+              "props": {
+                "type": "integer",
+                "required": true
+              },
+              "default": 0,
+              "widget": "dl-input"
+            }
+          ]
+        }
       },
       {
         "scope": "node",

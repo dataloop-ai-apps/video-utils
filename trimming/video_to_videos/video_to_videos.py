@@ -20,7 +20,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param overlap: the number of frames to overlap between sub videos
         :return: sub videos intervals by number of frames per sub video
         """
-        assert overlap >= 0, "overlap must be greater than or equal to 0"
         sub_videos_intervals = []
         start_frame = 0
         if isinstance(num_frames_per_split, list):
@@ -138,6 +137,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param splitter_arg: an argument to split by
         :param n_overlap: the number of frames to overlap between sub videos
         """
+        assert isinstance(n_overlap, int) and n_overlap >= 0, "overlap must be an integer greater than or equal to 0"
         local_input_folder = "input_folder" + str(threading.get_native_id())
         local_output_folder = "output_folder" + str(threading.get_native_id())
         item_dataset = item.dataset
@@ -157,8 +157,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         max_fc_len = len(str(total_frames))
 
-        sub_videos_intervals = []
-
         if mode == "num_frames":
             sub_videos_intervals = ServiceRunner.get_sub_videos_intervals_by_num_frames(splitter_arg, total_frames,
                                                                                         n_overlap)
@@ -168,6 +166,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         elif mode == "out_length":
             sub_videos_intervals = ServiceRunner.get_sub_videos_intervals_by_length(splitter_arg, total_frames, fps,
                                                                                     n_overlap)
+        else:
+            assert False, "mode can only be num_frames or num_splits or out_length"
         print(sub_videos_intervals)
         annotations = item.annotations.list()
         sub_videos_annotations_info = {}

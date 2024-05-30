@@ -39,6 +39,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param threshold: the threshold of the similarity
         :param window_size: the side-length of the sliding window used in comparison
         """
+        assert isinstance(threshold, float) and (0 < threshold < 1), "threshold must be a float between 0 and 1"
         frame_count = 0
         frame_items = list()
         dataset = item.dataset
