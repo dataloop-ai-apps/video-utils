@@ -28,9 +28,9 @@
               "title": "Output Folder",
               "props": {
                 "type": "string",
-                "required": false
+                "required": false,
+                "default": "/"
               },
-              "default": "/",
               "widget": "dl-input"
             },
             {
@@ -38,29 +38,29 @@
               "title": "Trimming by Mode",
               "props": {
                 "type": "string",
-                "required": true
+                "required": true,
+                "options": [
+                  {
+                    "label": "Frames Interval",
+                    "value": "frames_interval"
+                  },
+                  {
+                    "label": "Number of Splits",
+                    "value": "num_splits"
+                  },
+                  {
+                    "label": "Seconds of Interval",
+                    "value": "seconds_interval"
+                  }
+                ],
+                "default": "frames_interval"
               },
-              "options": [
-                {
-                  "label": "Frames Interval",
-                  "value": "frames_interval"
-                },
-                {
-                  "label": "Number of Splits",
-                  "value": "num_splits"
-                },
-                {
-                  "label": "Seconds of Interval",
-                  "value": "seconds_interval"
-                }
-              ],
               "rules": [
                 {
                   "type": "required",
                   "effect": "error"
                 }
               ],
-              "default": "frames_interval",
               "widget": "dl-select"
             },
             {
@@ -68,7 +68,8 @@
               "title": "Splitter Argument",
               "props": {
                 "type": "integer",
-                "required": true
+                "required": true,
+                "default": 100
               },
               "rules": [
                 {
@@ -76,7 +77,6 @@
                   "effect": "error"
                 }
               ],
-              "default": 100,
               "widget": "dl-input"
             }
           ]
@@ -99,9 +99,9 @@
               "title": "Output Folder",
               "props": {
                 "type": "string",
-                "required": false
+                "required": false,
+                "default": "/"
               },
-              "default": "/",
               "widget": "dl-input"
             },
             {
@@ -109,29 +109,29 @@
               "title": "Trimming by Mode",
               "props": {
                 "type": "string",
-                "required": true
+                "required": true,
+                "options": [
+                  {
+                    "label": "Number of Frames",
+                    "value": "num_frames"
+                  },
+                  {
+                    "label": "Number of Splits",
+                    "value": "num_splits"
+                  },
+                  {
+                    "label": "Length by Seconds",
+                    "value": "out_length"
+                  }
+                ],
+                "default": "num_frames"
               },
-              "options": [
-                {
-                  "label": "Number of Frames",
-                  "value": "num_frames"
-                },
-                {
-                  "label": "Number of Splits",
-                  "value": "num_splits"
-                },
-                {
-                  "label": "Length by Seconds",
-                  "value": "out_length"
-                }
-              ],
               "rules": [
                 {
                   "type": "required",
                   "effect": "error"
                 }
               ],
-              "default": "num_frames",
               "widget": "dl-select"
             },
             {
@@ -155,7 +155,8 @@
               "title": "Number of Overlapping Frames",
               "props": {
                 "type": "integer",
-                "required": true
+                "required": true,
+                "default": 0
               },
               "rules": [
                 {
@@ -163,7 +164,6 @@
                   "effect": "error"
                 }
               ],
-              "default": 0,
               "widget": "dl-input"
             }
           ]
@@ -186,9 +186,9 @@
               "title": "Output Folder",
               "props": {
                 "type": "string",
-                "required": false
+                "required": false,
+                "default": "/"
               },
-              "default": "/",
               "widget": "dl-input"
             },
             {
@@ -196,7 +196,8 @@
               "title": "Threshold",
               "props": {
                 "type": "float",
-                "required": true
+                "required": true,
+                "default": "num_frames"
               },
               "rules": [
                 {
@@ -204,7 +205,6 @@
                   "effect": "error"
                 }
               ],
-              "default": "num_frames",
               "widget": "dl-select"
             },
             {
