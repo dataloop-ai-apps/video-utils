@@ -216,13 +216,3 @@ class ServiceRunner(dl.BaseServiceRunner):
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
         return item, sub_videos_items
-
-
-sr = ServiceRunner()
-sr.video_to_videos(
-    item=dl.items.get(item_id="66575891b7f45f3d5d93d0ed"),
-    output_folder=None,
-    mode="num_frames",
-    splitter_arg=100,
-    n_overlap=0
-)
