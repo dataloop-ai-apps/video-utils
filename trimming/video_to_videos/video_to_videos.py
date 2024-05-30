@@ -128,7 +128,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             sub_video_item.annotations.upload(annotations=builder)
 
     @staticmethod
-    def video_to_videos(item, output_folder, mode, splitter_arg, n_overlap):
+    def video_to_videos(item, output_folder, mode, splitter_arg, n_overlap, context: dl.Context = None):
         """
         splits video to sub videos by given mode
         :param item: the video item to split
@@ -137,7 +137,14 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param splitter_arg: an argument to split by
         :param n_overlap: the number of frames to overlap between sub videos
         """
-        assert isinstance(n_overlap, int) and n_overlap >= 0, "overlap must be an integer greater than or equal to 0"
+        if context is not None and context.node is not None:
+            config = context.node.metadata.get("customNodeConfig", {})
+            output_folder = config.get("output_folder", output_folder)
+            mode = config.get("mode", mode)
+            splitter_arg = config.get("splitter_arg", splitter_arg)
+            n_overlap = config.get("n_overlap", n_overlap)
+
+        assert isinstance(n_overlap, int) and n_overlap >= 0, "overlap must be an integer greater than or equal to 0."
         local_input_folder = "input_folder" + str(threading.get_native_id())
         local_output_folder = "output_folder" + str(threading.get_native_id())
         item_dataset = item.dataset

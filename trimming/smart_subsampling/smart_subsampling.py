@@ -31,7 +31,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         return frame_item
 
     @staticmethod
-    def video_to_frames_smart_subsampling(item, output_folder, threshold, window_size):
+    def video_to_frames_smart_subsampling(item, output_folder, threshold, window_size, context: dl.Context = None):
         """
         splits video to sub videos by similarity of frames
         :param item: the video item to split
@@ -39,6 +39,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param threshold: the threshold of the similarity
         :param window_size: the side-length of the sliding window used in comparison
         """
+        if context is not None and context.node is not None:
+            config = context.node.metadata.get("customNodeConfig", {})
+            output_folder = config.get("output_folder", output_folder)
+            threshold = config.get("threshold", threshold)
+            window_size = config.get("window_size", window_size)
+
         assert isinstance(threshold, float) and (0 < threshold < 1), "threshold must be a float between 0 and 1"
         frame_count = 0
         frame_items = list()

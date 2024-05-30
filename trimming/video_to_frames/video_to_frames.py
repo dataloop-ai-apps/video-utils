@@ -120,7 +120,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         os.mkdir(folder)
 
     @staticmethod
-    def video_to_frames(item, output_folder, mode, splitter_arg):
+    def video_to_frames(item, output_folder, mode, splitter_arg, context: dl.Context = None):
         """
         splits video by given mode
         :param item: the video item to split
@@ -128,6 +128,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param mode: the mode to split by
         :param splitter_arg: an argument to split by
         """
+        if context is not None and context.node is not None:
+            config = context.node.metadata.get("customNodeConfig", {})
+            output_folder = config.get("output_folder", output_folder)
+            mode = config.get("mode", mode)
+            splitter_arg = config.get("splitter_arg", splitter_arg)
+
         local_input_folder = "input_folder" + str(threading.get_native_id())
         local_output_folder = "output_folder" + str(threading.get_native_id())
         ServiceRunner.create_folder(local_input_folder)
