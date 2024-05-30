@@ -211,8 +211,6 @@ class ServiceRunner(dl.BaseServiceRunner):
                                                          "origin_video_name": f"{input_base_name}.{video_type}",
                                                          "time": datetime.datetime.now().isoformat(),
                                                          "sub_videos_intervals": sub_videos_intervals,
-                                                         "fps": fps,
-                                                         "startTime": 0,
                                                          "user": {"parentItemId": item.id},
                                                      })
         sub_videos_items = list(sub_videos_items)
