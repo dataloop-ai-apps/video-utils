@@ -1,13 +1,8 @@
 {
   "displayName": "[Video Utils] - Trimming",
-  "name": "video-utils-trimming",
+  "name": "video-utils-trimming-OFIR",
   "description": "Video Utils - Trimming is a collection of functions for video manipulation. The package includes functions for video splitting, video to videos splitting, and smart subsampling.",
   "version": "1.1.2",
-  "codebase": {
-    "type": "git",
-    "gitUrl": "https://github.com/dataloop-ai-apps/video-utils.git",
-    "gitTag": "1.1.2"
-  },
   "scope": "public",
   "components": {
     "pipelineNodes": [
@@ -139,7 +134,8 @@
               "title": "Splitter Argument",
               "props": {
                 "type": "integer",
-                "required": true
+                "required": true,
+                "default": 100
               },
               "rules": [
                 {
@@ -147,7 +143,6 @@
                   "effect": "error"
                 }
               ],
-              "default": 100,
               "widget": "dl-input"
             },
             {
