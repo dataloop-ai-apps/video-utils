@@ -185,13 +185,15 @@ class ServiceRunner(dl.BaseServiceRunner):
             # Loop through each frame in the split and write it to the output file
             for sub_video_frame_count, frame_index in enumerate(range(start_frame, end_frame + 1)):
                 frame_annotation = annotations.get_frame(frame_num=frame_index).annotations
-                frame_annotation_data = [{"top": ann.top,
-                                          "left": ann.left,
-                                          "bottom": ann.bottom,
-                                          "right": ann.right,
-                                          "label": ann.label,
-                                          "object_visible": ann.object_visible,
-                                          "object_id": ann.object_id} for ann in frame_annotation]
+                frame_annotation_data = [{
+                    "top": ann.top,
+                    "left": ann.left,
+                    "bottom": ann.bottom,
+                    "right": ann.right,
+                    "label": ann.label,
+                    "object_visible": ann.object_visible,
+                    "object_id": ann.object_id if ann.object_id is not None else int(ann.id, 16)
+                } for ann in frame_annotation]
                 sub_videos_annotations_info[sub_video_name].append([sub_video_frame_count, frame_annotation_data])
                 ret, frame = cap.read()
                 if ret:

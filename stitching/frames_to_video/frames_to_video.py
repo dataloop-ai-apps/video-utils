@@ -114,14 +114,10 @@ class ServiceRunner(dl.BaseServiceRunner):
             for ann in frame_annotations:
                 current_annotations_data.append(
                     [next(object_unique_id) if not prev_annotations_data else None, [ann["top"],
-                                                                                     ann[
-                                                                                         "left"],
-                                                                                     ann[
-                                                                                         "bottom"],
-                                                                                     ann[
-                                                                                         "right"],
-                                                                                     ann[
-                                                                                         "label"]]])
+                                                                                     ann["left"],
+                                                                                     ann["bottom"],
+                                                                                     ann["right"],
+                                                                                     ann["label"]]])
             if prev_annotations_data:
                 ServiceRunner.match_annotation_object_id(current_annotations_data, prev_annotations_data, object_unique_id)
             for ann in current_annotations_data:

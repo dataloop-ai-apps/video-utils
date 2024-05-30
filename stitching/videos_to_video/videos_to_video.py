@@ -103,13 +103,15 @@ class ServiceRunner(dl.BaseServiceRunner):
             ret, frame = cap.read()
             while ret:
                 frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
-                sub_video_annotations_data.append([{"top": ann.top,
-                                                    "left": ann.left,
-                                                    "bottom": ann.bottom,
-                                                    "right": ann.right,
-                                                    "label": ann.label,
-                                                    "object_visible": ann.object_visible,
-                                                    "object_id": int(ann.id, 16)} for ann in frame_annotations])
+                sub_video_annotations_data.append([{
+                    "top": ann.top,
+                    "left": ann.left,
+                    "bottom": ann.bottom,
+                    "right": ann.right,
+                    "label": ann.label,
+                    "object_visible": ann.object_visible,
+                    "object_id": ann.object_id if ann.object_id is not None else int(ann.id, 16)
+                } for ann in frame_annotations])
                 writer.write(frame)
                 ret, frame = cap.read()
                 frame_index += 1
