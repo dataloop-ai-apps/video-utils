@@ -141,8 +141,8 @@ class ServiceRunner(dl.BaseServiceRunner):
             config = context.node.metadata.get("customNodeConfig", {})
             output_folder = config.get("output_folder", output_folder)
             mode = config.get("mode", mode)
-            splitter_arg = config.get("splitter_arg", splitter_arg)
-            n_overlap = config.get("n_overlap", n_overlap)
+            splitter_arg = int(config.get("splitter_arg", splitter_arg))
+            n_overlap = int(config.get("n_overlap", n_overlap))
 
         assert isinstance(n_overlap, int) and n_overlap >= 0, "overlap must be an integer greater than or equal to 0."
         local_input_folder = "input_folder" + str(threading.get_native_id())

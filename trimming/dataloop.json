@@ -67,7 +67,7 @@
               "name": "splitter_arg",
               "title": "Splitter Argument",
               "props": {
-                "type": "integer",
+                "type": "number",
                 "required": true,
                 "default": 100
               },
@@ -138,7 +138,7 @@
               "name": "splitter_arg",
               "title": "Splitter Argument",
               "props": {
-                "type": "integer",
+                "type": "number",
                 "required": true,
                 "default": 100
               },
@@ -154,7 +154,7 @@
               "name": "n_overlap",
               "title": "Number of Overlapping Frames",
               "props": {
-                "type": "integer",
+                "type": "number",
                 "required": true,
                 "default": 0
               },
@@ -211,7 +211,7 @@
               "name": "window_size",
               "title": "Window Size",
               "props": {
-                "type": "integer",
+                "type": "number",
                 "required": false
               },
               "widget": "dl-input"

@@ -42,8 +42,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         if context is not None and context.node is not None:
             config = context.node.metadata.get("customNodeConfig", {})
             output_folder = config.get("output_folder", output_folder)
-            threshold = config.get("threshold", threshold)
-            window_size = config.get("window_size", window_size)
+            threshold = float(config.get("threshold", threshold))
+            window_size = int(config.get("window_size", window_size))
 
         assert isinstance(threshold, float) and (0 < threshold < 1), "threshold must be a float between 0 and 1"
         frame_count = 0

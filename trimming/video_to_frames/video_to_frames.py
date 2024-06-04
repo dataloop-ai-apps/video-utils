@@ -132,7 +132,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             config = context.node.metadata.get("customNodeConfig", {})
             output_folder = config.get("output_folder", output_folder)
             mode = config.get("mode", mode)
-            splitter_arg = config.get("splitter_arg", splitter_arg)
+            splitter_arg = int(config.get("splitter_arg", splitter_arg))
 
         local_input_folder = "input_folder" + str(threading.get_native_id())
         local_output_folder = "output_folder" + str(threading.get_native_id())
