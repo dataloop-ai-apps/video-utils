@@ -40,7 +40,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param window_size: the side-length of the sliding window used in comparison
         """
         if context is not None and context.node is not None:
-            config = context.node.metadata.get("customNodeConfig", {})
+            config = context.node.metadata.get("customNodeConfig", dict())
             output_folder = config.get("output_folder", output_folder)
             threshold = float(config.get("threshold", threshold))
             window_size = int(config.get("window_size", window_size))

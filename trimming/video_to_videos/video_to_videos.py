@@ -138,7 +138,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param n_overlap: the number of frames to overlap between sub videos
         """
         if context is not None and context.node is not None:
-            config = context.node.metadata.get("customNodeConfig", {})
+            config = context.node.metadata.get("customNodeConfig", dict())
             output_folder = config.get("output_folder", output_folder)
             mode = config.get("mode", mode)
             splitter_arg = int(config.get("splitter_arg", splitter_arg))
