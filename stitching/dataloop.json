@@ -9,6 +9,17 @@
     "gitTag": "1.1.2"
   },
   "scope": "public",
+  "attributes": {
+    "Category": "Application",
+    "Hub": "Dataloop",
+    "Provider": "Dataloop",
+    "Deployed By": "Dataloop",
+    "Application Type": "Pipeline Node",
+    "Media Type": [
+      "Video",
+      "Image"
+    ]
+  },
   "components": {
     "pipelineNodes": [
       {
