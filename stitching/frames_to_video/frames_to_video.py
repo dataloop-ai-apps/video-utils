@@ -114,14 +114,10 @@ class ServiceRunner(dl.BaseServiceRunner):
             for ann in frame_annotations:
                 current_annotations_data.append(
                     [next(object_unique_id) if not prev_annotations_data else None, [ann["top"],
-                                                                                     ann[
-                                                                                         "left"],
-                                                                                     ann[
-                                                                                         "bottom"],
-                                                                                     ann[
-                                                                                         "right"],
-                                                                                     ann[
-                                                                                         "label"]]])
+                                                                                     ann["left"],
+                                                                                     ann["bottom"],
+                                                                                     ann["right"],
+                                                                                     ann["label"]]])
             if prev_annotations_data:
                 ServiceRunner.match_annotation_object_id(current_annotations_data, prev_annotations_data, object_unique_id)
             for ann in current_annotations_data:
@@ -155,7 +151,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         local_output_folder = "output_folder" + str(threading.get_native_id())
         ServiceRunner.create_folder(local_input_folder)
         ServiceRunner.create_folder(local_output_folder)
-        filters = dl.Filters(custom_filter=dql_filter)
+
+        if dql_filter is None:
+            filters = dl.Filters()
+            filters.add(field='metadata.user.parentItemId', values=item.id)
+        else:
+            filters = dl.Filters(custom_filter=dql_filter)
         filters.sort_by(field='name')
         items = dataset.items.get_all_items(filters=filters)
         if not items or len(items) == 0:
@@ -191,3 +192,4 @@ class ServiceRunner(dl.BaseServiceRunner):
         ServiceRunner.upload_annotations(video_item, frames_annotations)
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
+        return video_item

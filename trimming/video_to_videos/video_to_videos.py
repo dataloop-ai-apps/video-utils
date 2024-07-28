@@ -20,7 +20,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param overlap: the number of frames to overlap between sub videos
         :return: sub videos intervals by number of frames per sub video
         """
-        assert overlap >= 0, "overlap must be greater than or equal to 0"
         sub_videos_intervals = []
         start_frame = 0
         if isinstance(num_frames_per_split, list):
@@ -129,7 +128,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             sub_video_item.annotations.upload(annotations=builder)
 
     @staticmethod
-    def video_to_videos(item, output_folder, mode, splitter_arg, n_overlap):
+    def video_to_videos(item, output_folder, mode, splitter_arg, n_overlap, context: dl.Context = None):
         """
         splits video to sub videos by given mode
         :param item: the video item to split
@@ -138,6 +137,14 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param splitter_arg: an argument to split by
         :param n_overlap: the number of frames to overlap between sub videos
         """
+        if context is not None and context.node is not None:
+            config = context.node.metadata.get("customNodeConfig", dict())
+            output_folder = config.get("output_folder", output_folder)
+            mode = config.get("mode", mode)
+            splitter_arg = int(config.get("splitter_arg", splitter_arg))
+            n_overlap = int(config.get("n_overlap", n_overlap))
+
+        assert isinstance(n_overlap, int) and n_overlap >= 0, "overlap must be an integer greater than or equal to 0."
         local_input_folder = "input_folder" + str(threading.get_native_id())
         local_output_folder = "output_folder" + str(threading.get_native_id())
         item_dataset = item.dataset
@@ -157,8 +164,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         max_fc_len = len(str(total_frames))
 
-        sub_videos_intervals = []
-
         if mode == "num_frames":
             sub_videos_intervals = ServiceRunner.get_sub_videos_intervals_by_num_frames(splitter_arg, total_frames,
                                                                                         n_overlap)
@@ -168,6 +173,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         elif mode == "out_length":
             sub_videos_intervals = ServiceRunner.get_sub_videos_intervals_by_length(splitter_arg, total_frames, fps,
                                                                                     n_overlap)
+        else:
+            assert False, "mode can only be num_frames or num_splits or out_length"
         print(sub_videos_intervals)
         annotations = item.annotations.list()
         sub_videos_annotations_info = {}
@@ -185,13 +192,15 @@ class ServiceRunner(dl.BaseServiceRunner):
             # Loop through each frame in the split and write it to the output file
             for sub_video_frame_count, frame_index in enumerate(range(start_frame, end_frame + 1)):
                 frame_annotation = annotations.get_frame(frame_num=frame_index).annotations
-                frame_annotation_data = [{"top": ann.top,
-                                          "left": ann.left,
-                                          "bottom": ann.bottom,
-                                          "right": ann.right,
-                                          "label": ann.label,
-                                          "object_visible": ann.object_visible,
-                                          "object_id": int(ann.id, 16)} for ann in frame_annotation]
+                frame_annotation_data = [{
+                    "top": ann.top,
+                    "left": ann.left,
+                    "bottom": ann.bottom,
+                    "right": ann.right,
+                    "label": ann.label,
+                    "object_visible": ann.object_visible,
+                    "object_id": ann.object_id if ann.object_id is not None else int(ann.id, 16)
+                } for ann in frame_annotation]
                 sub_videos_annotations_info[sub_video_name].append([sub_video_frame_count, frame_annotation_data])
                 ret, frame = cap.read()
                 if ret:
@@ -208,7 +217,11 @@ class ServiceRunner(dl.BaseServiceRunner):
                                                      item_metadata={
                                                          "origin_video_name": f"{input_base_name}.{video_type}",
                                                          "time": datetime.datetime.now().isoformat(),
-                                                         "sub_videos_intervals": sub_videos_intervals})
-        ServiceRunner.upload_annotations(sub_videos_annotations_info, sub_videos_items, item.fps)
+                                                         "sub_videos_intervals": sub_videos_intervals,
+                                                         "user": {"parentItemId": item.id},
+                                                     })
+        sub_videos_items = list(sub_videos_items)
+        ServiceRunner.upload_annotations(sub_videos_annotations_info, sub_videos_items, fps)
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
+        return item, sub_videos_items

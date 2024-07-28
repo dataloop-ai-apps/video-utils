@@ -9,6 +9,17 @@
     "gitTag": "1.1.2"
   },
   "scope": "public",
+  "attributes": {
+    "Category": "Application",
+    "Hub": "Dataloop",
+    "Provider": "Dataloop",
+    "Deployed By": "Dataloop",
+    "Application Type": "Pipeline Node",
+    "Media Type": [
+      "Video",
+      "Image"
+    ]
+  },
   "components": {
     "pipelineNodes": [
       {
@@ -20,7 +31,67 @@
         },
         "categories": [
           "video-utils"
-        ]
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "output_folder",
+              "title": "Output Folder",
+              "props": {
+                "type": "string",
+                "required": false,
+                "default": "/"
+              },
+              "widget": "dl-input"
+            },
+            {
+              "name": "mode",
+              "title": "Trimming by Mode",
+              "props": {
+                "type": "string",
+                "required": true,
+                "options": [
+                  {
+                    "label": "Frames Interval",
+                    "value": "frames_interval"
+                  },
+                  {
+                    "label": "Number of Splits",
+                    "value": "num_splits"
+                  },
+                  {
+                    "label": "Seconds of Interval",
+                    "value": "seconds_interval"
+                  }
+                ],
+                "default": "frames_interval"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-select"
+            },
+            {
+              "name": "splitter_arg",
+              "title": "Splitter Argument",
+              "props": {
+                "type": "number",
+                "required": true,
+                "default": 100
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            }
+          ]
+        }
       },
       {
         "scope": "node",
@@ -31,7 +102,83 @@
         },
         "categories": [
           "video-utils"
-        ]
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "output_folder",
+              "title": "Output Folder",
+              "props": {
+                "type": "string",
+                "required": false,
+                "default": "/"
+              },
+              "widget": "dl-input"
+            },
+            {
+              "name": "mode",
+              "title": "Trimming by Mode",
+              "props": {
+                "type": "string",
+                "required": true,
+                "options": [
+                  {
+                    "label": "Number of Frames",
+                    "value": "num_frames"
+                  },
+                  {
+                    "label": "Number of Splits",
+                    "value": "num_splits"
+                  },
+                  {
+                    "label": "Length by Seconds",
+                    "value": "out_length"
+                  }
+                ],
+                "default": "num_frames"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-select"
+            },
+            {
+              "name": "splitter_arg",
+              "title": "Splitter Argument",
+              "props": {
+                "type": "number",
+                "required": true,
+                "default": 100
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "n_overlap",
+              "title": "Number of Overlapping Frames",
+              "props": {
+                "type": "integer",
+                "required": true,
+                "default": 0
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            }
+          ]
+        }
       },
       {
         "scope": "node",
@@ -42,7 +189,46 @@
         },
         "categories": [
           "video-utils"
-        ]
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "output_folder",
+              "title": "Output Folder",
+              "props": {
+                "type": "string",
+                "required": false,
+                "default": "/"
+              },
+              "widget": "dl-input"
+            },
+            {
+              "name": "threshold",
+              "title": "Threshold",
+              "props": {
+                "type": "float",
+                "required": true,
+                "default": "num_frames"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-select"
+            },
+            {
+              "name": "window_size",
+              "title": "Window Size",
+              "props": {
+                "type": "number",
+                "required": false
+              },
+              "widget": "dl-input"
+            }
+          ]
+        }
       }
     ],
     "modules": [
@@ -71,6 +257,16 @@
               {
                 "type": "Integer",
                 "name": "splitter_arg"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "Item[]",
+                "name": "items"
               }
             ],
             "displayIcon": "qa-sampling",
@@ -109,6 +305,16 @@
                 "name": "n_overlap"
               }
             ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "Item[]",
+                "name": "items"
+              }
+            ],
             "displayIcon": "qa-sampling",
             "displayName": "Video To Videos Split"
           }
@@ -139,6 +345,16 @@
               {
                 "type": "Integer",
                 "name": "window_size"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "Item[]",
+                "name": "items"
               }
             ],
             "displayIcon": "qa-sampling",
