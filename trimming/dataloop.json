@@ -213,7 +213,7 @@
                 "required": false,
                 "default": 0.5
               },
-              "widget": "dl-select"
+              "widget": "dl-input"
             },
             {
               "name": "window_size",
