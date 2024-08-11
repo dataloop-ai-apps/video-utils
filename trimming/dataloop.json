@@ -208,11 +208,18 @@
               "name": "threshold",
               "title": "Threshold",
               "props": {
+                "redAsterisk": true,
                 "title": true,
                 "type": "number",
-                "required": false,
+                "required": true,
                 "default": 0.5
               },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
               "widget": "dl-input"
             },
             {
