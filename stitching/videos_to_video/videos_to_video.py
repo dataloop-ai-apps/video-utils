@@ -250,10 +250,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         if dql_filter is None:
             filters = dl.Filters()
             filters.add(field='metadata.user.parentItemId', values=item.id)
+            # filters.add(field=dl.FiltersKnownFields.DIR, values=item.dir)
         else:
             filters = dl.Filters(custom_filter=dql_filter)
-        filters.sort_by(field='name')
+        # filters.sort_by(field='name')
         items = dataset.items.get_all_items(filters=filters)
+        items = sorted(items, key=lambda x: x.filename)
         if not items or len(items) == 0:
             print("No videos match to merge")
             return
