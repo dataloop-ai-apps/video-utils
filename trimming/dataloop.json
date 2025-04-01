@@ -3,6 +3,13 @@
   "name": "video-utils-trimming",
   "description": "Video Utils - Trimming is a collection of functions for video manipulation. The package includes functions for video splitting, video to videos splitting, and smart subsampling.",
   "version": "1.1.2",
+  "attributes": {
+    "Provider": "Dataloop",
+    "Category": "Application",
+    "Media Type": ["Video", "Image"],
+    "Application Type": ["Pipeline Node"],
+    "License": "Apache 2.0"
+  },
   "codebase": {
     "type": "git",
     "gitUrl": "https://github.com/dataloop-ai-apps/video-utils.git",
