@@ -1,0 +1,128 @@
+{
+    "displayName": "Video Frame Extractor Demo",
+    "name": "video-frame-extractor-demo",
+    "scope": "project",
+    "version": "0.0.5",
+    "attributes": {
+        "Provider": "Dataloop",
+        "Category": "Application",
+        "Application Type": "Pipeline Node",
+        "Deployed By": "Dataloop",
+        "Media Type": ["Video"]
+    },
+    "components": {
+        "pipelineNodes": [
+            {
+                "invoke": {
+                    "type": "function",
+                    "namespace": "vfe-service-samsung.vfe-module.extract_video_frames"
+                },
+                "name": "Video Frame Extractor",
+                "categories": ["model"],
+                "displayName": "Video Frame Extractor Samsung",
+                "description": "Create a Video Frame Extractor to extract representative frames from a video",
+                "scope": "node",
+                "configuration": {
+                    "fields": [
+                        {
+                            "name": "name",
+                            "title": "Node Name",
+                            "props": {
+                                "title": true,
+                                "type": "string",
+                                "default": "Video Frame Extractor",
+                                "required": true,
+                                "placeholder": "Insert node name"
+                            },
+                            "rules": [
+                                {
+                                    "type": "required",
+                                    "effect": "error"
+                                }
+                            ],
+                            "widget": "dl-input"
+                        },
+                        {
+                            "name": "uploadFormat",
+                            "title": "Upload Format",
+                            "props": {
+                                "type": "string",
+                                "required": true,
+                                "options": [
+                                    {
+                                        "label": "Frames",
+                                        "value": "frames"
+                                    },
+                                    {
+                                        "label": "Video",
+                                        "value": "video"
+                                    }
+                                ]
+                            },
+                            "rules": [
+                                {
+                                    "type": "required",
+                                    "effect": "error"
+                                }
+                            ],
+                            "widget": "dl-select"
+                        },
+                        {
+                            "name": "useSubsampling",
+                            "title": "Use Subsampling",
+                            "props": {
+                                "type": "boolean",
+                                "default": true
+                            },
+                            "widget": "dl-checkbox"
+                        }
+                    ]
+                }
+            }
+        ],
+        "modules": [
+            {
+                "name": "vfe-module",
+                "entryPoint": "service.py",
+                "className": "VideoFrameExtractor",
+                "initInputs": [],
+                "computeConfig": "vfe-service-samsung",
+                "functions": [
+                    {
+                        "name": "extract_video_frames",
+                        "input": [
+                            {
+                                "type": "Item",
+                                "name": "item"
+                            }
+                        ],
+                        "output": [
+                            {
+                                "type": "Item[]",
+                                "name": "items"
+                            }
+                        ],
+                        "displayIcon": "icon-dl-split-image",
+                        "displayName": "Video Frame Extractor"
+                    }
+                ]
+            }
+        ],
+        "computeConfigs": [
+            {
+                "name": "vfe-service-samsung",
+                "moduleName": "vfe-module",
+                "runtime": {
+                    "podType": "regular-xs",
+                    "runnerImage": "gcr.io/viewo-g/piper/agent/gpu/microsoft-dataloop:0.1.0",
+                    "concurrency": 10,
+                    "autoscaler": {
+                        "minReplicas": 1,
+                        "maxReplicas": 2,
+                        "queueLength": 10
+                    }
+                }
+            }
+        ]
+    }
+}
