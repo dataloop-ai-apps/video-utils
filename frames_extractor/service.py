@@ -97,6 +97,7 @@ class VideoFrameExtractor(dl.BaseServiceRunner):
         node_context = context.node
         upload_format = node_context.metadata.get('customNodeConfig', dict()).get('uploadFormat', "frames") # video or frames
         use_subsampling = node_context.metadata.get('customNodeConfig', dict()).get('useSubsampling', True)
+        threshold = node_context.metadata.get('customNodeConfig', dict()).get('threshold', 0.15)
 
         frame_items = []
         to_upload = None
@@ -124,7 +125,7 @@ class VideoFrameExtractor(dl.BaseServiceRunner):
         
         # if use_subsampling is True, subsample the video
         else:
-            frames = self.subsample_video(video_path=video_filepath, threshold=0.17)
+            frames = self.subsample_video(video_path=video_filepath, threshold=threshold)
             logger.info(f"Video subsampling completed in {time.time() - start_time:.2f} seconds")
 
             with tempfile.TemporaryDirectory() as temp_dir:
