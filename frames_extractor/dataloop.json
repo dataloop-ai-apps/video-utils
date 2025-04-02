@@ -15,11 +15,11 @@
             {
                 "invoke": {
                     "type": "function",
-                    "namespace": "vfe-service-samsung.vfe-module.extract_video_frames"
+                    "namespace": "vfe-service-v2.vfe-module.extract_video_frames"
                 },
                 "name": "Video Frame Extractor",
                 "categories": ["model"],
-                "displayName": "Video Frame Extractor Samsung",
+                "displayName": "Video Frame Extractor",
                 "description": "Create a Video Frame Extractor to extract representative frames from a video",
                 "scope": "node",
                 "configuration": {
@@ -87,7 +87,14 @@
                               "step": 0.05,
                               "title": true,
                               "required": true
-                            }     
+                            },
+                            "rules": [
+                                {
+                                  "type": "required",
+                                  "effect": "error"
+                                }
+                              ],
+                              "widget": "dl-slider"     
                         }
                     ]
                 }
@@ -99,7 +106,7 @@
                 "entryPoint": "service.py",
                 "className": "VideoFrameExtractor",
                 "initInputs": [],
-                "computeConfig": "vfe-service-samsung",
+                "computeConfig": "vfe-service-v2",
                 "functions": [
                     {
                         "name": "extract_video_frames",
@@ -123,7 +130,7 @@
         ],
         "computeConfigs": [
             {
-                "name": "vfe-service-samsung",
+                "name": "vfe-service-v2",
                 "moduleName": "vfe-module",
                 "runtime": {
                     "podType": "regular-xs",

@@ -115,12 +115,12 @@ class VideoFrameExtractor(dl.BaseServiceRunner):
         cap.release()
 
         start_time = time.time()
-        
+        metadata = {'user': {'original_item_id': item.id}}
         # if use_subsampling is False, extract all frames
         if use_subsampling is False:
             frames_path = self.extract_only_frames(video_path=video_filepath)
             remote_path = f"{os.path.splitext(item.filename)[0]}/{upload_format}"
-            output_item = item.dataset.items.upload(local_path=frames_path, remote_path=remote_path)
+            output_item = item.dataset.items.upload(local_path=frames_path, remote_path=remote_path, item_metadata=metadata)
             logger.info(f"Uploaded {len(output_item)} frames to {remote_path}")
         
         # if use_subsampling is True, subsample the video
@@ -171,7 +171,7 @@ class VideoFrameExtractor(dl.BaseServiceRunner):
                     to_upload = frame_items
                 
                 remote_path = f"{os.path.splitext(item.filename)[0]}/{upload_format}"
-                output_item = item.dataset.items.upload(local_path=to_upload, remote_path=remote_path)
+                output_item = item.dataset.items.upload(local_path=to_upload, remote_path=remote_path,item_metadata=metadata)
             
         # Uploader returns generator or a single item, or None
         if output_item is None:
