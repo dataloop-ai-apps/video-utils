@@ -2,7 +2,7 @@
     "displayName": "Video Frame Extractor Demo",
     "name": "video-frame-extractor-demo",
     "scope": "project",
-    "version": "0.0.5",
+    "version": "0.0.7",
     "attributes": {
         "Provider": "Dataloop",
         "Category": "Application",
