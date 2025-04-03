@@ -35,8 +35,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         sub_videos_intervals = items[0].metadata["sub_videos_intervals"]
         time = items[0].metadata["time"]
         for item in items:
-            if item.metadata["origin_video_name"] != original_name or item.metadata[
-                "sub_videos_intervals"] != sub_videos_intervals or item.metadata["time"] != time:
+            if (item.metadata["origin_video_name"] != original_name or
+                    item.metadata["sub_videos_intervals"] != sub_videos_intervals or item.metadata["time"] != time):
                 return False
         return True
 
@@ -64,13 +64,15 @@ class ServiceRunner(dl.BaseServiceRunner):
 
             for frame_index, j in enumerate(range(start_frame, next_interval_start_frame)):
                 frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
-                sub_video_annotations_data.append([{"top": ann.top,
-                                                    "left": ann.left,
-                                                    "bottom": ann.bottom,
-                                                    "right": ann.right,
-                                                    "label": ann.label,
-                                                    "object_visible": ann.object_visible,
-                                                    "object_id": int(ann.id, 16)} for ann in frame_annotations])
+                sub_video_annotations_data.append([{
+                    "top": ann.top,
+                    "left": ann.left,
+                    "bottom": ann.bottom,
+                    "right": ann.right,
+                    "label": ann.label,
+                    "object_visible": ann.object_visible,
+                    "object_id": ann.object_id if ann.object_id is not None else int(ann.id, 16)
+                } for ann in frame_annotations])
                 ret, frame = cap.read()
                 if ret:
                     writer.write(frame)
@@ -103,13 +105,15 @@ class ServiceRunner(dl.BaseServiceRunner):
             ret, frame = cap.read()
             while ret:
                 frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
-                sub_video_annotations_data.append([{"top": ann.top,
-                                                    "left": ann.left,
-                                                    "bottom": ann.bottom,
-                                                    "right": ann.right,
-                                                    "label": ann.label,
-                                                    "object_visible": ann.object_visible,
-                                                    "object_id": int(ann.id, 16)} for ann in frame_annotations])
+                sub_video_annotations_data.append([{
+                    "top": ann.top,
+                    "left": ann.left,
+                    "bottom": ann.bottom,
+                    "right": ann.right,
+                    "label": ann.label,
+                    "object_visible": ann.object_visible,
+                    "object_id": ann.object_id if ann.object_id is not None else int(ann.id, 16)
+                } for ann in frame_annotations])
                 writer.write(frame)
                 ret, frame = cap.read()
                 frame_index += 1
@@ -242,9 +246,16 @@ class ServiceRunner(dl.BaseServiceRunner):
         local_output_folder = "output_folder" + str(threading.get_native_id())
         ServiceRunner.create_folder(local_input_folder)
         ServiceRunner.create_folder(local_output_folder)
-        filters = dl.Filters(custom_filter=dql_filter)
-        filters.sort_by(field='name')
+
+        if dql_filter is None:
+            filters = dl.Filters()
+            filters.add(field='metadata.user.parentItemId', values=item.id)
+            # filters.add(field=dl.FiltersKnownFields.DIR, values=item.dir)
+        else:
+            filters = dl.Filters(custom_filter=dql_filter)
+        # filters.sort_by(field='name')
         items = dataset.items.get_all_items(filters=filters)
+        items = sorted(items, key=lambda x: x.filename)
         if not items or len(items) == 0:
             print("No videos match to merge")
             return
@@ -275,3 +286,4 @@ class ServiceRunner(dl.BaseServiceRunner):
         ServiceRunner.upload_annotations(video_item, sub_videos_annotations_data)
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
+        return video_item

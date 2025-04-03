@@ -16,6 +16,17 @@
     "gitTag": "1.1.3"
   },
   "scope": "public",
+  "attributes": {
+    "Category": "Application",
+    "Hub": "Dataloop",
+    "Provider": "Dataloop",
+    "Deployed By": "Dataloop",
+    "Application Type": "Pipeline Node",
+    "Media Type": [
+      "Video",
+      "Image"
+    ]
+  },
   "components": {
     "pipelineNodes": [
       {
@@ -73,6 +84,12 @@
                 "name": "fps"
               }
             ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
             "displayIcon": "qa-sampling",
             "displayName": "Frames to Video Merge"
           }
@@ -99,6 +116,12 @@
               {
                 "type": "String",
                 "name": "output_folder"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
               }
             ],
             "displayIcon": "qa-sampling",
