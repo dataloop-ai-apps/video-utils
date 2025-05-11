@@ -1,7 +1,7 @@
 {
-  "displayName": "[Video Utils] - Stitching",
-  "name": "video-utils-stitching",
-  "description": "Video Utils - Stitching is a collection of tools for video manipulation. It includes tools for merging frames into a video and merging videos into a single video.",
+  "displayName": "[Video Utils] - Splitting",
+  "name": "video-utils-splitting",
+  "description": "Video Utils - Splitting is a collection of functions for video manipulation. The package includes functions for video splitting, video to videos splitting, and smart subsampling.",
   "version": "1.1.3",
   "attributes": {
     "Provider": "Dataloop",
@@ -25,12 +25,12 @@
     "pipelineNodes": [
       {
         "scope": "node",
-        "name": "frames-to-video",
-        "displayName": "Frames to Video Merge",
-        "description": "Merge frames into a video",
+        "name": "video-to-frames",
+        "displayName": "Video to Frames",
+        "description": "Split video into frames by number of splits, time interval, or frames interval.",
         "invoke": {
           "type": "function",
-          "namespace": "frames-to-video.frames-to-video.frames_to_vid"
+          "namespace": "video-to-frames.video-to-frames.video_to_frames"
         },
         "categories": [
           "video-utils"
@@ -38,22 +38,26 @@
         "configuration": {
           "fields": [
             {
-              "name": "output_video_type",
-              "title": "Output Video Type",
+              "name": "split_type",
+              "title": "Split Type",
               "props": {
                 "type": "string",
                 "required": true,
                 "options": [
                   {
-                    "label": "Webm",
-                    "value": "webm"
+                    "label": "Split by Number of Splits",
+                    "value": "num_splits"
                   },
                   {
-                    "label": "MP4",
-                    "value": "mp4"
+                    "label": "Split by Time Interval",
+                    "value": "time_interval"
+                  },
+                  {
+                    "label": "Split by Frames Interval",
+                    "value": "frames_interval"
                   }
                 ],
-                "default": "Webm"
+                "default": "frames_interval"
               },
               "rules": [
                 {
@@ -64,22 +68,14 @@
               "widget": "dl-select"
             },
             {
-              "name": "tracker",
-              "title": "Tracker",
+              "name": "splitter_arg",
+              "title": "Number of Splits/Time Interval/Frames Interval",
               "props": {
-                "type": "string",
+                "title": true,
+                "type": "number",
                 "required": true,
-                "options": [
-                  {
-                    "label": "ByteTrack",
-                    "value": "ByteTrack"
-                  },
-                  {
-                    "label": "DeepSORT",
-                    "value": "DeepSORT"
-                  }
-                ],
-                "default": "ByteTrack"
+                "placeholder": "Insert splitter argument",
+                "default": 1
               },
               "rules": [
                 {
@@ -87,7 +83,7 @@
                   "effect": "error"
                 }
               ],
-              "widget": "dl-select"
+              "widget": "dl-input"
             },
             {
               "name": "output_dir",
@@ -98,108 +94,6 @@
                 "default": "output",
                 "required": true,
                 "placeholder": "Insert output directory"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
-            },
-            {
-              "name": "input_dir",
-              "title": "Dataset Input Directory",
-              "props": {
-                "title": true,
-                "type": "string",
-                "default": "input",
-                "placeholder": "Insert input directory"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
-            },
-            {
-              "name": "fps",
-              "title": "FPS",
-              "props": {
-                "title": true,
-                "type": "number",
-                "default": 20,
-                "placeholder": "Insert FPS"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
-            },
-            {
-              "name": "min_box_area",
-              "title": "Minimum Box Area",
-              "props": {
-                "title": true,
-                "type": "number",
-                "default": 10,
-                "placeholder": "Minimum Tracked Box Area"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
-            },
-            {
-              "name": "track_thresh",
-              "title": "Minimum confidence score for detections to be tracked",
-              "props": {
-                "title": true,
-                "type": "number",
-                "default": 0.5,
-                "placeholder": "Insert Minimum confidence"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
-            },
-            {
-              "name": "track_buffer",
-              "title": "Max frames a track can go unmatched before being removed",
-              "props": {
-                "title": true,
-                "type": "number",
-                "default": 30,
-                "placeholder": "Insert Max track buffer"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
-            },
-            {
-              "name": "match_thresh",
-              "title": "Minimum similarity score to link a detection to an existing track",
-              "props": {
-                "title": true,
-                "type": "number",
-                "default": 0.8,
-                "placeholder": "Insert Minimum similarity"
               },
               "rules": [
                 {
@@ -214,44 +108,18 @@
       },
       {
         "scope": "node",
-        "name": "videos-to-video",
-        "displayName": "Videos to Video Merge",
-        "description": "Merge videos into a single video",
+        "name": "smart-frames-splitting",
+        "displayName": "Smart Frames Splitting",
+        "description": "Split video into frames by structural or embedding similarity.",
         "invoke": {
           "type": "function",
-          "namespace": "videos-to-video.videos-to-video.videos_to_video"
+          "namespace": "video-to-frames.video-to-frames.video_to_frames"
         },
         "categories": [
           "video-utils"
         ],
         "configuration": {
           "fields": [
-            {
-              "name": "tracker",
-              "title": "Tracker",
-              "props": {
-                "type": "string",
-                "required": true,
-                "options": [
-                  {
-                    "label": "ByteTrack",
-                    "value": "ByteTrack"
-                  },
-                  {
-                    "label": "DeepSORT",
-                    "value": "DeepSORT"
-                  }
-                ],
-                "default": "ByteTrack"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-select"
-            },
             {
               "name": "output_dir",
               "title": "Dataset Output Directory",
@@ -271,14 +139,22 @@
               "widget": "dl-input"
             },
             {
-              "name": "input_dir",
-              "title": "Dataset Input Directory",
+              "name": "split_type",
+              "title": "Split Type",
               "props": {
-                "title": true,
                 "type": "string",
-                "default": "input",
-                "required": false,
-                "placeholder": "Insert input directory"
+                "required": true,
+                "options": [
+                  {
+                    "label": "Structural Similarity",
+                    "value": "structural_similarity_sampling"
+                  },
+                  {
+                    "label": "Embedding Similarity",
+                    "value": "embedding_similarity_sampling"
+                  }
+                ],
+                "default": "embedding_similarity_sampling"
               },
               "rules": [
                 {
@@ -286,16 +162,18 @@
                   "effect": "error"
                 }
               ],
-              "widget": "dl-input"
+              "widget": "dl-select"
             },
             {
-              "name": "min_box_area",
-              "title": "Minimum Box Area",
+              "name": "min_interval",
+              "title": "The minimum interval between frames to be considered for splitting.",
               "props": {
                 "title": true,
                 "type": "number",
                 "default": 10,
-                "placeholder": "Minimum Tracked Box Area"
+                "min": 1,
+                "step": 1,
+                "required": true
               },
               "rules": [
                 {
@@ -306,13 +184,100 @@
               "widget": "dl-input"
             },
             {
-              "name": "track_thresh",
-              "title": "Minimum confidence score for detections to be tracked",
+              "name": "window_size",
+              "title": "The size of the sliding window used (only relevant for structural similarity).",
               "props": {
                 "title": true,
                 "type": "number",
-                "default": 0.5,
-                "placeholder": "Insert Minimum confidence"
+                "default": 7,
+                "max": 25,
+                "min": 3,
+                "step": 2,
+                "required": true
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-slider"
+            },
+            {
+              "name": "threshold",
+              "title": "The threshold for the similarity between frames.",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 0.13,
+                "max": 1,
+                "min": 0,
+                "step": 0.01
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-slider"
+            }
+          ]
+        }
+      },
+      {
+        "scope": "node",
+        "name": "video-to-videos",
+        "displayName": "Video to Videos",
+        "description": "Split video into multiple videos by number of splits, time interval, or frames interval.",
+        "invoke": {
+          "type": "function",
+          "namespace": "video-to-videos.video-to-videos.video_to_videos"
+        },
+        "categories": [
+          "video-utils"
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "split_type",
+              "title": "Split Type",
+              "props": {
+                "type": "string",
+                "required": true,
+                "options": [
+                  {
+                    "label": "Split by number of frames per sub video",
+                    "value": "num_frames"
+                  },
+                  {
+                    "label": "Split by number of sub videos",
+                    "value": "num_splits"
+                  },
+                  {
+                    "label": "Split by sub video length in seconds",
+                    "value": "out_length"
+                  }
+                ],
+                "default": "num_splits"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-select"
+            },
+            {
+              "name": "output_dir",
+              "title": "Output Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "output",
+                "required": true,
+                "placeholder": "Insert output directory"
               },
               "rules": [
                 {
@@ -323,13 +288,13 @@
               "widget": "dl-input"
             },
             {
-              "name": "track_buffer",
-              "title": "Max frames a track can go unmatched before being removed",
+              "name": "splitter_arg",
+              "title": "Number of Splits/Time Interval/Frames Interval",
               "props": {
                 "title": true,
                 "type": "number",
-                "default": 30,
-                "placeholder": "Insert Max track buffer"
+                "default": 2,
+                "required": true
               },
               "rules": [
                 {
@@ -340,20 +305,16 @@
               "widget": "dl-input"
             },
             {
-              "name": "match_thresh",
-              "title": "Minimum similarity score to link a detection to an existing track",
+              "name": "n_overlap",
+              "title": "Number of overlapping frames between consecutive sub-videos",
               "props": {
                 "title": true,
                 "type": "number",
-                "default": 0.8,
-                "placeholder": "Insert Minimum similarity"
+                "default": 0,
+                "min": 0,
+                "step": 1,
+                "required": false
               },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
               "widget": "dl-input"
             }
           ]
@@ -362,14 +323,14 @@
     ],
     "modules": [
       {
-        "name": "frames-to-video",
-        "entryPoint": "stitching/frames_to_video.py",
+        "name": "video-to-frames",
+        "entryPoint": "splitting/video_to_frames.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
           {
-            "name": "frames_to_vid",
-            "description": "frames to video tool",
+            "name": "video_to_frames",
+            "description": "video splitting tool",
             "input": [
               {
                 "type": "Item",
@@ -378,24 +339,24 @@
             ],
             "output": [
               {
-                "type": "Item",
-                "name": "item"
+                "type": "Item[]",
+                "name": "items"
               }
             ],
             "displayIcon": "qa-sampling",
-            "displayName": "Frames to Video Merge"
+            "displayName": "Video to Frames Split"
           }
         ]
       },
       {
-        "name": "videos-to-video",
-        "entryPoint": "stitching/videos_to_video.py",
+        "name": "video-to-videos",
+        "entryPoint": "splitting/video_to_videos.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
           {
-            "name": "videos_to_video",
-            "description": "videos to video tool",
+            "name": "video_to_videos",
+            "description": "video to videos splitting tool",
             "input": [
               {
                 "type": "Item",
@@ -404,20 +365,20 @@
             ],
             "output": [
               {
-                "type": "Item",
-                "name": "item"
+                "type": "Item[]",
+                "name": "items"
               }
             ],
             "displayIcon": "qa-sampling",
-            "displayName": "Videos to Video Merge"
+            "displayName": "Video To Videos Split"
           }
         ]
       }
     ],
     "services": [
       {
-        "name": "frames-to-video",
-        "moduleName": "frames-to-video",
+        "name": "video-to-frames",
+        "moduleName": "video-to-frames",
         "runtime": {
           "podType": "regular-xs",
           "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.1",
@@ -441,8 +402,8 @@
         "operation": "none"
       },
       {
-        "name": "videos-to-video",
-        "moduleName": "videos-to-video",
+        "name": "video-to-videos",
+        "moduleName": "video-to-videos",
         "runtime": {
           "podType": "regular-xs",
           "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.1",
