@@ -1,15 +1,16 @@
 import datetime
+import logging
+import os
+import random
 import shutil
-import threading
+import tempfile
 
 import cv2
-import os
 import dtlpy as dl
 
 
 class ServiceRunner(dl.BaseServiceRunner):
-    def __init__(self):
-        ...
+    def __init__(self): ...
 
     @staticmethod
     def get_sub_videos_intervals_by_num_frames(num_frames_per_split, total_frames, overlap):
@@ -36,7 +37,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             while total_frames - start_frame >= num_frames_per_split:
                 end_frame = start_frame + num_frames_per_split - 1
                 sub_videos_intervals.append([start_frame, min(end_frame, total_frames - 1)])
-                start_frame += (num_frames_per_split - overlap)
+                start_frame += num_frames_per_split - overlap
                 if end_frame >= total_frames - 1:
                     break
 
@@ -114,101 +115,129 @@ class ServiceRunner(dl.BaseServiceRunner):
             sub_video_annotations_info = sub_videos_annotations_info[sub_video_item.name]
             for frame_index, frame_annotation in sub_video_annotations_info:
                 for ann in frame_annotation:
-                    builder.add(annotation_definition=dl.Box(top=ann["top"],
-                                                             left=ann["left"],
-                                                             bottom=ann["bottom"],
-                                                             right=ann["right"],
-                                                             label=ann["label"]),
-                                object_visible=ann["object_visible"],
-                                # set the frame for the annotation
-                                frame_num=frame_index,
-                                # need to input the element id to create the connection between frames
-                                object_id=ann["object_id"])
+                    builder.add(
+                        annotation_definition=dl.Box(
+                            top=ann["top"],
+                            left=ann["left"],
+                            bottom=ann["bottom"],
+                            right=ann["right"],
+                            label=ann["label"],
+                        ),
+                        object_visible=ann["object_visible"],
+                        # set the frame for the annotation
+                        frame_num=frame_index,
+                        # need to input the element id to create the connection between frames
+                        object_id=ann["object_id"],
+                    )
 
             # Upload the annotations to platform
             sub_video_item.annotations.upload(annotations=builder)
 
-    @staticmethod
-    def video_to_videos(item, output_folder, mode, splitter_arg, n_overlap):
-        """
-        splits video to sub videos by given mode
-        :param item: the video item to split
-        :param output_folder: the remote output folder
-        :param mode: the mode to split by
-        :param splitter_arg: an argument to split by
-        :param n_overlap: the number of frames to overlap between sub videos
-        """
-        local_input_folder = "input_folder" + str(threading.get_native_id())
-        local_output_folder = "output_folder" + str(threading.get_native_id())
-        item_dataset = item.dataset
-        ServiceRunner.create_folder(local_input_folder)
-        ServiceRunner.create_folder(local_output_folder)
+    def video_to_videos(self, item: dl.Item, context: dl.Context):
+        logger = logging.getLogger('video-utils.video_to_frames')
+        logger.info('Running service Video To Frames')
 
-        input_video = item.download(local_path=local_input_folder)
-        # Open the input video file
-        cap = cv2.VideoCapture(input_video)
-        input_base_name = os.path.splitext(os.path.basename(input_video))[0]
-        video_type = os.path.splitext(os.path.basename(input_video))[1].replace(".", "")
-        fourcc = cv2.VideoWriter_fourcc(*("VP80" if video_type.lower() == "webm" else "mp4v"))
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        node = context.node
+        self.split_type = node.metadata['customNodeConfig']['split_type']
+        self.dl_output_folder = node.metadata['customNodeConfig']['output_dir']
+        self.splitter_arg = node.metadata['customNodeConfig']['splitter_arg']
+        self.n_overlap = node.metadata['customNodeConfig']['n_overlap']
 
-        # Get the total number of frames in the input video
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        max_fc_len = len(str(total_frames))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            local_input_folder = os.path.join(temp_dir, f'tmp_dir_{random.randint(0, 999999)}', 'input_folder')
+            local_output_folder = os.path.join(temp_dir, f'tmp_dir_{random.randint(0, 999999)}', 'output_folder')
+            os.makedirs(local_input_folder, exist_ok=True)
+            os.makedirs(local_output_folder, exist_ok=True)
 
-        sub_videos_intervals = []
+            input_video = item.download(local_path=local_input_folder)
+            cap = cv2.VideoCapture(input_video)
+            input_base_name = os.path.splitext(os.path.basename(input_video))[0]
+            video_type = os.path.splitext(os.path.basename(input_video))[1].replace(".", "")
+            fourcc = cv2.VideoWriter_fourcc(*("VP80" if video_type.lower() == "webm" else "mp4v"))
+            fps = int(cap.get(cv2.CAP_PROP_FPS))
+            frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 
-        if mode == "num_frames":
-            sub_videos_intervals = ServiceRunner.get_sub_videos_intervals_by_num_frames(splitter_arg, total_frames,
-                                                                                        n_overlap)
-        elif mode == "num_splits":
-            sub_videos_intervals = ServiceRunner.get_sub_videos_intervals_by_num_splits(splitter_arg, total_frames,
-                                                                                        n_overlap)
-        elif mode == "out_length":
-            sub_videos_intervals = ServiceRunner.get_sub_videos_intervals_by_length(splitter_arg, total_frames, fps,
-                                                                                    n_overlap)
-        print(sub_videos_intervals)
-        annotations = item.annotations.list()
-        sub_videos_annotations_info = {}
-        # Loop through each split
-        for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
-            sub_video_name = f"{input_base_name}_{str(i).zfill(max_fc_len)}_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{video_type}"
-            output_video = os.path.join(local_output_folder, sub_video_name)
-            # Create a VideoWriter object to write the split video to a file
-            sub_videos_annotations_info[sub_video_name] = []
-            writer = cv2.VideoWriter(output_video, fourcc, fps, frame_size)
+            # Get the total number of frames in the input video
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            max_fc_len = len(str(total_frames))
 
-            # Set the current frame to the start frame of the split
-            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+            sub_videos_intervals = []
 
-            # Loop through each frame in the split and write it to the output file
-            for sub_video_frame_count, frame_index in enumerate(range(start_frame, end_frame + 1)):
-                frame_annotation = annotations.get_frame(frame_num=frame_index).annotations
-                frame_annotation_data = [{"top": ann.top,
-                                          "left": ann.left,
-                                          "bottom": ann.bottom,
-                                          "right": ann.right,
-                                          "label": ann.label,
-                                          "object_visible": ann.object_visible,
-                                          "object_id": int(ann.id, 16)} for ann in frame_annotation]
-                sub_videos_annotations_info[sub_video_name].append([sub_video_frame_count, frame_annotation_data])
-                ret, frame = cap.read()
-                if ret:
-                    writer.write(frame)
-                else:
-                    break
+            if self.split_type == "num_frames":
+                sub_videos_intervals = ServiceRunner.get_sub_videos_intervals_by_num_frames(
+                    self.splitter_arg, total_frames, self.n_overlap
+                )
+            elif self.split_type == "num_splits":
+                sub_videos_intervals = ServiceRunner.get_sub_videos_intervals_by_num_splits(
+                    self.splitter_arg, total_frames, self.n_overlap
+                )
+            elif self.split_type == "out_length":
+                sub_videos_intervals = ServiceRunner.get_sub_videos_intervals_by_length(
+                    self.splitter_arg, total_frames, fps, self.n_overlap
+                )
+            print(sub_videos_intervals)
+            annotations = item.annotations.list()
+            sub_videos_annotations_info = {}
+            # Loop through each split
+            for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
+                sub_video_name = f"{input_base_name}_{str(i).zfill(max_fc_len)}_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{video_type}"
+                output_video = os.path.join(local_output_folder, sub_video_name)
+                # Create a VideoWriter object to write the split video to a file
+                sub_videos_annotations_info[sub_video_name] = []
+                writer = cv2.VideoWriter(output_video, fourcc, fps, frame_size)
 
-            # Release the VideoWriter object
-            writer.release()
-        # Release the input video file
-        cap.release()
-        sub_videos_items = item_dataset.items.upload(local_path=os.path.join(local_output_folder, "*"),
-                                                     remote_path=output_folder,
-                                                     item_metadata={
-                                                         "origin_video_name": f"{input_base_name}.{video_type}",
-                                                         "time": datetime.datetime.now().isoformat(),
-                                                         "sub_videos_intervals": sub_videos_intervals})
-        ServiceRunner.upload_annotations(sub_videos_annotations_info, sub_videos_items, item.fps)
-        shutil.rmtree(local_input_folder, ignore_errors=True)
-        shutil.rmtree(local_output_folder, ignore_errors=True)
+                # Set the current frame to the start frame of the split
+                cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
+                # Loop through each frame in the split and write it to the output file
+                for sub_video_frame_count, frame_index in enumerate(range(start_frame, end_frame + 1)):
+                    frame_annotation = annotations.get_frame(frame_num=frame_index).annotations
+                    frame_annotation_data = [
+                        {
+                            "top": ann.top,
+                            "left": ann.left,
+                            "bottom": ann.bottom,
+                            "right": ann.right,
+                            "label": ann.label,
+                            "object_visible": ann.object_visible,
+                            "object_id": int(ann.id, 16),
+                        }
+                        for ann in frame_annotation
+                    ]
+                    sub_videos_annotations_info[sub_video_name].append([sub_video_frame_count, frame_annotation_data])
+                    ret, frame = cap.read()
+                    if ret:
+                        writer.write(frame)
+                    else:
+                        break
+
+                # Release the VideoWriter object
+                writer.release()
+            # Release the input video file
+            cap.release()
+            sub_videos_items = item.dataset.items.upload(
+                local_path=os.path.join(local_output_folder, "*"),
+                remote_path=self.dl_output_folder,
+                item_metadata={
+                    "origin_video_name": f"{input_base_name}.{video_type}",
+                    "time": datetime.datetime.now().isoformat(),
+                    "sub_videos_intervals": sub_videos_intervals,
+                },
+            )
+            ServiceRunner.upload_annotations(sub_videos_annotations_info, sub_videos_items, item.fps)
+
+
+if __name__ == "__main__":
+    runner = ServiceRunner()
+    context = dl.Context()
+    context.pipeline_id = "682069122afb795bc3c41d59"
+    context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
+    context.node.metadata["customNodeConfig"] = {
+        "split_type": "out_length",
+        "splitter_arg": 10,
+        "output_dir": "/testing_777",
+        "n_overlap": 0,
+    }
+
+    # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
+    runner.video_to_videos(item=dl.items.get(item_id="682053186fafa91fa123fce3"), context=context)
