@@ -1,9 +1,11 @@
-import os
 import logging
+import os
 import random
 import tempfile
+
 import cv2
 import dtlpy as dl
+from skimage.metrics import structural_similarity
 
 
 class ServiceRunner(dl.BaseServiceRunner):
@@ -12,8 +14,6 @@ class ServiceRunner(dl.BaseServiceRunner):
     def _get_frames_list(self, cap):
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = int(cap.get(cv2.CAP_PROP_FPS))
-        print(f'-HHH- total_frames {total_frames}')
-        print(f'-HHH- fps {fps}')
         if self.split_type == 'frames_interval':
             return list(range(0, total_frames, self.splitter_arg))
         if self.split_type == 'time_interval':
@@ -51,11 +51,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         annotations = item.annotations.list()
 
         for frame_idx in frames_list:
-            print(f'-HHH- frame_idx {frame_idx}')
-            cap_set_res = cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-            print(f'-HHH- cap_set_res {cap_set_res}')
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             success, frame = cap.read()
-            print(f'-HHH- success {success}')
             if not success:
                 break
             frame_path = os.path.join(
@@ -63,7 +60,6 @@ class ServiceRunner(dl.BaseServiceRunner):
             )
             cv2.imwrite(frame_path, frame)
             frame_item = item_dataset.items.upload(local_path=frame_path, remote_path=self.dl_output_folder)
-            print(f'-HHH- frame_item {frame_item}')
             if annotations:
                 frame_annotation = annotations.get_frame(frame_num=frame_idx)
                 builder = frame_item.annotations.builder()
@@ -112,5 +108,5 @@ if __name__ == "__main__":
         "output_dir": "/testing_238",
     }
 
-    context.node.metadata["customNodeConfig"] = {"window_size": 11, "threshold": 0.1, "output_dir": "/testing_238"}
-    runner.video_to_frames(item=dl.items.get(item_id="682053186fafa91fa123fce3"), context=context)
+    context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
+    runner.video_to_frames(item=dl.items.get(item_id="6821ec8fb188d7f242334661"), context=context)
