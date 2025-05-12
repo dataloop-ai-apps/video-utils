@@ -6,8 +6,7 @@ from skimage.metrics import structural_similarity
 
 
 class ServiceRunner(dl.BaseServiceRunner):
-    def __init__(self):
-        ...
+    def __init__(self): ...
 
     @staticmethod
     def upload_frame(frame, fc, input_base_name, output_folder, dataset):
@@ -19,7 +18,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         :param output_folder: the remote folder path
         :param dataset: the dataset to upload the item to
         """
-        tmp_file = f"{input_base_name}_{fc}_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.jpg"
+        tmp_file = (
+            f"{input_base_name}_{fc}_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.jpg"
+        )
         cv2.imwrite(tmp_file, frame)  # save frame as JPEG file
         dataset.items.upload(local_path=tmp_file, remote_path=output_folder)
         os.remove(tmp_file)
@@ -44,8 +45,9 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         success, frame_rgb = vidcap.read()
         reference = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2GRAY)
-        ServiceRunner.upload_frame(frame_rgb, str(frame_count).zfill(max_fc_len), input_base_name, output_folder,
-                                   dataset)
+        ServiceRunner.upload_frame(
+            frame_rgb, str(frame_count).zfill(max_fc_len), input_base_name, output_folder, dataset
+        )
 
         success, frame_rgb = vidcap.read()
         while success:
@@ -53,8 +55,9 @@ class ServiceRunner(dl.BaseServiceRunner):
             ssim = structural_similarity(reference, frame_gray, win_size=window_size)
             if ssim <= threshold:
                 frame_count += 1
-                ServiceRunner.upload_frame(frame_rgb, str(frame_count).zfill(max_fc_len), input_base_name,
-                                           output_folder, dataset)
+                ServiceRunner.upload_frame(
+                    frame_rgb, str(frame_count).zfill(max_fc_len), input_base_name, output_folder, dataset
+                )
                 reference = frame_gray
             success, frame_rgb = vidcap.read()
 
