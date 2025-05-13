@@ -91,13 +91,13 @@ class ServiceRunner(dl.BaseServiceRunner):
             num_frames_per_split = out_length * self.fps
         return self.get_sub_videos_intervals_by_num_frames(num_frames_per_split)
 
-    def _set_config_params(self, node: dl.PipelineNode):
+    def set_config_params(self, node: dl.PipelineNode):
         self.split_type = node.metadata['customNodeConfig']['split_type']
         self.dl_output_folder = node.metadata['customNodeConfig']['output_dir']
         self.splitter_arg = node.metadata['customNodeConfig']['splitter_arg']
         self.n_overlap = node.metadata['customNodeConfig']['n_overlap']
 
-    def _initialize_video_params(self, item: dl.Item, cap: cv2.VideoCapture, input_video: str):
+    def initialize_video_params(self, cap: cv2.VideoCapture, input_video: str):
         self.input_base_name = os.path.splitext(os.path.basename(input_video))[0]
         self.video_type = os.path.splitext(os.path.basename(input_video))[1].replace(".", "")
         # Use appropriate codec based on video type
@@ -188,39 +188,36 @@ class ServiceRunner(dl.BaseServiceRunner):
         logger = logging.getLogger('video-utils.video_to_frames')
         logger.info('Running service Video To Frames')
 
-        self._set_config_params(node=context.node)
+        self.set_config_params(node=context.node)
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            self.local_input_folder = os.path.join(temp_dir, f'tmp_dir_{random.randint(0, 999999)}', 'input_folder')
-            self.local_output_folder = os.path.join(temp_dir, f'tmp_dir_{random.randint(0, 999999)}', 'output_folder')
-            os.makedirs(self.local_input_folder, exist_ok=True)
-            os.makedirs(self.local_output_folder, exist_ok=True)
+        self.local_input_folder = tempfile.mkdtemp(suffix="_input")
+        self.local_output_folder = tempfile.mkdtemp(suffix="_output")
 
-            input_video = item.download(local_path=self.local_input_folder)
-            cap = cv2.VideoCapture(input_video)
-            self._initialize_video_params(item, cap, input_video)
+        input_video = item.download(local_path=self.local_input_folder)
+        cap = cv2.VideoCapture(input_video)
+        self.initialize_video_params(cap, input_video)
 
-            sub_videos_intervals = []
-            if self.split_type == "num_frames":
-                sub_videos_intervals = self.get_sub_videos_intervals_by_num_frames(self.splitter_arg)
-            elif self.split_type == "num_splits":
-                sub_videos_intervals = self.get_sub_videos_intervals_by_num_splits(self.splitter_arg)
-            else:  # split_type == out_length
-                sub_videos_intervals = self.get_sub_videos_intervals_by_length(self.splitter_arg)
+        sub_videos_intervals = []
+        if self.split_type == "num_frames":
+            sub_videos_intervals = self.get_sub_videos_intervals_by_num_frames(self.splitter_arg)
+        elif self.split_type == "num_splits":
+            sub_videos_intervals = self.get_sub_videos_intervals_by_num_splits(self.splitter_arg)
+        else:  # split_type == out_length
+            sub_videos_intervals = self.get_sub_videos_intervals_by_length(self.splitter_arg)
 
-            # Process each video split
-            annotations = item.annotations.list()
-            sub_videos_annotations_info = {}
-            for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
-                sub_video_name, sub_video_annotations = self.process_video_split(
-                    cap, annotations, start_frame, end_frame, i
-                )
-                sub_videos_annotations_info[sub_video_name] = sub_video_annotations
+        # Process each video split
+        annotations = item.annotations.list()
+        sub_videos_annotations_info = {}
+        for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
+            sub_video_name, sub_video_annotations = self.process_video_split(
+                cap, annotations, start_frame, end_frame, i
+            )
+            sub_videos_annotations_info[sub_video_name] = sub_video_annotations
 
-            # Release the input video file
-            cap.release()
+        # Release the input video file
+        cap.release()
 
-            self.upload_sub_videos_and_annotations(item, sub_videos_annotations_info, sub_videos_intervals)
+        self.upload_sub_videos_and_annotations(item, sub_videos_annotations_info, sub_videos_intervals)
 
 
 if __name__ == "__main__":
@@ -229,11 +226,11 @@ if __name__ == "__main__":
     context.pipeline_id = "682069122afb795bc3c41d59"
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
-        "split_type": "num_frames",
-        "splitter_arg": 20 * 20,
-        "output_dir": "/testing_12222",
-        "n_overlap": 20 * 5,
+        "split_type": "out_length",
+        "splitter_arg": 5,
+        "output_dir": "/5_sec_videos",
+        "n_overlap": 0,
     }
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.video_to_videos(item=dl.items.get(item_id="682053186fafa91fa123fce3"), context=context)
+    runner.video_to_videos(item=dl.items.get(item_id="6823064b3bf48f0d128ea593"), context=context)

@@ -87,15 +87,14 @@ class ServiceRunner(dl.BaseServiceRunner):
             self.window_size = node.metadata['customNodeConfig']['window_size']
             self.threshold = node.metadata['customNodeConfig']['threshold']
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_dir = os.path.join(temp_dir, f'tmp_dir_{random.randint(0, 999999)}')
-            os.makedirs(temp_dir, exist_ok=True)
-            input_video = item.download(local_path=temp_dir)
-            cap = cv2.VideoCapture(input_video)
-            frames_list = self.get_frames_list(cap)
-            print(f'-HHH- frames_list {frames_list}')
-            self.upload_frames(item, frames_list, cap, temp_dir)
-            cap.release()
+        temp_dir = tempfile.mkdtemp()
+        os.makedirs(temp_dir, exist_ok=True)
+        input_video = item.download(local_path=temp_dir)
+        cap = cv2.VideoCapture(input_video)
+        frames_list = self.get_frames_list(cap)
+        print(f'-HHH- frames_list {frames_list}')
+        self.upload_frames(item, frames_list, cap, temp_dir)
+        cap.release()
 
 
 if __name__ == "__main__":
