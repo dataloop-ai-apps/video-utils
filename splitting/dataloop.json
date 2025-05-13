@@ -107,6 +107,78 @@
       },
       {
         "scope": "node",
+        "name": "smart-frames-splitting",
+        "invoke": {
+          "type": "function",
+          "namespace": "video-to-frames.video-to-frames.video_to_frames"
+        },
+        "categories": [
+          "video-utils"
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "output_dir",
+              "title": "Output Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "output",
+                "required": true,
+                "placeholder": "Insert output directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "window_size",
+              "title": "The size of the sliding window (7x7 pixels) used to compare frame similarity.",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 7,
+                "max": 25,
+                "min": 3,
+                "step": 2,
+                "required": true
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-slider"
+            },
+            {
+              "name": "threshold",
+              "title": "The threshold for the similarity between frames.",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 0.13,
+                "max": 1,
+                "min": 0,
+                "step": 0.01
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-slider"
+            }
+          ]
+        }
+      },
+      {
+        "scope": "node",
         "name": "video-to-videos",
         "invoke": {
           "type": "function",
@@ -114,18 +186,74 @@
         },
         "categories": [
           "video-utils"
-        ]
-      },
-      {
-        "scope": "node",
-        "name": "smart-subsampling",
-        "invoke": {
-          "type": "function",
-          "namespace": "smart-subsampling.smart-subsampling.video_to_frames_smart_subsampling"
-        },
-        "categories": [
-          "video-utils"
-        ]
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "split_type",
+              "title": "Split Type",
+              "props": {
+                "type": "string",
+                "required": true,
+                "options": [
+                  {
+                    "label": "Split by number of frames per sub video",
+                    "value": "num_frames"
+                  },
+                  {
+                    "label": "Split by number of sub videos",
+                    "value": "num_splits"
+                  },
+                  {
+                    "label": "Split by sub video length in seconds",
+                    "value": "out_length"
+                  }            
+                ],
+                "default": "num_splits"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-select"
+            },
+            {
+              "name": "output_dir",
+              "title": "Output Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "output",
+                "required": true,
+                "placeholder": "Insert output directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "splitter_arg",
+              "title": "Number of Splits/Time Interval/Frames Interval",
+              "props": {
+                "type": "number",
+                "default": 2
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            }
+          ]
+        }
       }
     ],
     "modules": [
