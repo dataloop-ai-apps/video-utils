@@ -36,6 +36,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             if reference is None:
                 reference = frame_gray
                 frames_list.append(frame_count)
+                frame_count += 1
                 continue
             ssim = structural_similarity(reference, frame_gray, win_size=self.window_size)
             if ssim <= self.threshold:
@@ -91,10 +92,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         temp_dir = tempfile.mkdtemp()
         os.makedirs(temp_dir, exist_ok=True)
         input_video = item.download(local_path=temp_dir)
-        print(f'-HHH- input_video {input_video}')
         cap = cv2.VideoCapture(input_video)
         frames_list = self.get_frames_list(cap)
-        print(f'-HHH- frames_list {frames_list}')
         self.upload_frames(item, frames_list, cap, temp_dir)
         cap.release()
 
@@ -120,6 +119,6 @@ if __name__ == "__main__":
     context.node.metadata["customNodeConfig"] = {
         "window_size": 9,
         "threshold": 0.6,
-        "output_dir": "/check_smart_sampling_1405",
+        "output_dir": "/check_smart_sampling_1405_3",
     }
-    runner.video_to_frames(item=dl.items.get(item_id="6824657bb9706613f30ac089"), context=context)
+    runner.video_to_frames(item=dl.items.get(item_id="682487673ec9c710b662097d"), context=context)
