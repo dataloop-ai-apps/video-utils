@@ -221,16 +221,28 @@ class ServiceRunner(dl.BaseServiceRunner):
 
 
 if __name__ == "__main__":
+    use_rc_env = False
+
+    if dl.token_expired():
+        dl.login()
+
+    if use_rc_env:
+        dl.setenv('rc')
+    else:
+        dl.setenv('prod')
+    if dl.token_expired():
+        dl.login()
+
     runner = ServiceRunner()
     context = dl.Context()
     context.pipeline_id = "682069122afb795bc3c41d59"
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
         "split_type": "out_length",
-        "splitter_arg": 5,
-        "output_dir": "/5_sec_videos",
+        "splitter_arg": 15,
+        "output_dir": "/15_sec_videos",
         "n_overlap": 0,
     }
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.video_to_videos(item=dl.items.get(item_id="6823064b3bf48f0d128ea593"), context=context)
+    runner.video_to_videos(item=dl.items.get(item_id="6821ec8fb188d7f242334661"), context=context)

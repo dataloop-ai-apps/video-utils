@@ -2,7 +2,7 @@ import datetime
 import logging
 import os
 import tempfile
-
+from dotenv import load_dotenv
 import cv2
 import dtlpy as dl
 
@@ -191,6 +191,10 @@ class ServiceRunner(dl.BaseServiceRunner):
 if __name__ == "__main__":
     if dl.token_expired():
         dl.login()
+
+    load_dotenv()
+    api_key = os.getenv('DATALOOP_API_KEY')
+    dl.login_api_key(api_key=api_key)
     runner = ServiceRunner()
     context = dl.Context()
     context.pipeline_id = "682069122afb795bc3c41d59"

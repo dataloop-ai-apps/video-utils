@@ -1,10 +1,11 @@
 import logging
 import os
-import random
 import tempfile
 
 import cv2
 import dtlpy as dl
+from dotenv import load_dotenv
+import os
 from skimage.metrics import structural_similarity
 
 
@@ -90,6 +91,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         temp_dir = tempfile.mkdtemp()
         os.makedirs(temp_dir, exist_ok=True)
         input_video = item.download(local_path=temp_dir)
+        print(f'-HHH- input_video {input_video}')
         cap = cv2.VideoCapture(input_video)
         frames_list = self.get_frames_list(cap)
         print(f'-HHH- frames_list {frames_list}')
@@ -98,6 +100,13 @@ class ServiceRunner(dl.BaseServiceRunner):
 
 
 if __name__ == "__main__":
+
+    load_dotenv()
+    api_key = os.getenv('DATALOOP_API_KEY')
+    dl.login_api_key(api_key=api_key)
+    if dl.token_expired():
+        dl.login()
+
     runner = ServiceRunner()
     context = dl.Context()
     context.pipeline_id = "682069122afb795bc3c41d59"
@@ -108,5 +117,9 @@ if __name__ == "__main__":
         "output_dir": "/split_to_frames_5fps",
     }
 
-    # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.video_to_frames(item=dl.items.get(item_id="6823078182b177d8b698a9b2"), context=context)
+    context.node.metadata["customNodeConfig"] = {
+        "window_size": 9,
+        "threshold": 0.6,
+        "output_dir": "/check_smart_sampling_1405",
+    }
+    runner.video_to_frames(item=dl.items.get(item_id="6824657bb9706613f30ac089"), context=context)
