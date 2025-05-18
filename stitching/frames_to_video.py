@@ -10,6 +10,13 @@ import os
 import logging
 import datetime
 import tempfile
+import torch
+
+# Add ByteTrack to Python path
+byte_track_path = os.path.join(os.path.dirname(__file__), 'ByteTrack')
+if byte_track_path not in sys.path:
+    sys.path.insert(0, byte_track_path)
+from yolox.tracker.byte_tracker import BYTETracker
 
 # Add BoT_SORT to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'BoT_SORT'))
@@ -23,7 +30,7 @@ class BaseTracker:
         self.id_to_label_map = {}
         self.annotations_builder = annotations_builder
 
-    def update(self, frame, fn, item): ...
+    def update(self, frame, fn, frame_item, video_item): ...
 
     def add_annotation(self, box_size, fn, label_id, top, left, bottom, right, object_id):
         if box_size <= self.min_box_area:
@@ -79,6 +86,59 @@ class BoTSORTTracker(BaseTracker):
             tid = t.track_id
             tcls = t.cls
             self.add_annotation(tlwh[2] * tlwh[3], fn, tcls, tlbr[0], tlbr[1], tlbr[2], tlbr[3], tid)
+        return annotations_builder
+
+
+class ByteTrackTracker(BaseTracker):
+    def __init__(self, opts, annotations_builder):
+        super().__init__(opts.min_box_area, annotations_builder)
+        self.opts = opts
+        # Add required parameters for ByteTrack
+        self.opts.track_thresh = 0.5
+        self.opts.track_buffer = 30
+        self.opts.match_thresh = 0.8
+        self.tracker = BYTETracker(args=self.opts, frame_rate=20.0)
+
+    def update(self, frame, fn, frame_item, video_item):
+        annotations_builder = video_item.annotations.builder()
+        frame_annotation = frame_item.annotations.list().annotations
+        tracker_annotations = np.zeros((len(frame_annotation), 5))
+        for i, ann in enumerate(frame_annotation):
+            if ann.type != 'box':
+                continue
+            tracker_annotations[i, :4] = [ann.top, ann.left, ann.bottom, ann.right]  # XYXY order!
+            try:
+                tracker_annotations[i, 4] = ann.metadata['user']['model']['confidence']
+            except KeyError:
+                tracker_annotations[i, 4] = 1.0
+            label_id = self.label_to_id_map.get(ann.label, None)
+            if label_id is None:
+                label_id = len(self.label_to_id_map)
+                self.id_to_label_map[label_id] = ann.label
+                self.label_to_id_map[ann.label] = label_id
+            # tracker_annotations[i, 5] = label_id
+
+        # Get image info and size
+        height, width = frame.shape[:2]
+        # Use frame index or 0 if not available
+        img_info = (height, width, fn)
+        img_size = (height, width)
+
+        # ByteTrack expects [x1, y1, x2, y2, score, class_id]
+        # Make sure tracker_annotations columns are in this order!
+        # If your ann is (top, left, bottom, right), convert to (left, top, right, bottom)
+        # If so, use:
+        # tracker_annotations[i, :4] = [ann.left, ann.top, ann.right, ann.bottom]
+        output_results_tensor = torch.from_numpy(tracker_annotations).float()
+        online_targets = self.tracker.update(output_results_tensor, img_info, img_size)
+        print(f"-HHH-online_targets: {online_targets}")
+        for t in online_targets:
+            print(f"-HHH-t: {t}")
+            tlwh = t.tlwh
+            tlbr = t.tlbr
+            tid = t.track_id
+            # tcls = t.cls
+            self.add_annotation(tlwh[2] * tlwh[3], fn, 0, tlbr[0], tlbr[1], tlbr[2], tlbr[3], tid)
         return annotations_builder
 
 
@@ -264,6 +324,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         items = self.get_input_files(item.dataset)
         cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
         video_item = self.stitch_and_upload(item.dataset, cv_frames)
+        #        self.tracker = ByteTrackTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
+
         self.tracker = BoTSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
 
         for i, (frame_i, item_i) in enumerate(zip(cv_frames, items)):
@@ -284,8 +346,8 @@ if __name__ == "__main__":
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
         "fps": 20,
-        "output_dir": "/second_stitching_test_1805",
-        "input_dir": "/split_5_sec_to_one_frame",
+        "output_dir": "/second_stitching_test_1805_33",
+        "input_dir": "/split_5_sec_to_one_frame_1805",
         "output_video_type": "webm",
     }
 
