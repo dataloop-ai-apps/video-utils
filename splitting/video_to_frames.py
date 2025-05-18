@@ -111,14 +111,14 @@ if __name__ == "__main__":
     context.pipeline_id = "682069122afb795bc3c41d59"
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
-        "split_type": "time_interval",
-        "splitter_arg": 0.20,
-        "output_dir": "/split_to_frames_5fps",
+        "split_type": "frames_interval",
+        "splitter_arg": 1,
+        "output_dir": "/split_5_sec_to_one_frame_1805",
     }
 
-    context.node.metadata["customNodeConfig"] = {
-        "window_size": 9,
-        "threshold": 0.6,
-        "output_dir": "/check_smart_sampling_1405_3",
-    }
-    runner.video_to_frames(item=dl.items.get(item_id="682487673ec9c710b662097d"), context=context)
+    # context.node.metadata["customNodeConfig"] = {
+    #     "window_size": 9,
+    #     "threshold": 0.6,
+    #     "output_dir": "/check_smart_sampling_1405_3",
+    # }
+    runner.video_to_frames(item=dl.items.get(item_id="68230780b188d71c49426406"), context=context)

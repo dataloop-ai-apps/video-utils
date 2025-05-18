@@ -241,3 +241,9 @@ fabric.properties
 *s3*
 *create_service*
 *.ipynb
+
+BoT_SORT/
+stitching/BoT_SORT/
+trackings/
+stitching/trackings/
+

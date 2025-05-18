@@ -1,10 +1,85 @@
-import datetime
-import logging
-import os
-import tempfile
-from dotenv import load_dotenv
+import numpy as np
+from trackings.utils import plot_one_box, load_opt
+from numpy import random
 import cv2
+import sys
 import dtlpy as dl
+import os
+from dotenv import load_dotenv
+import os
+import logging
+import datetime
+import tempfile
+
+# Add BoT_SORT to Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'BoT_SORT'))
+from tracker.mc_bot_sort import BoTSORT
+
+
+class BaseTracker:
+    def __init__(self, min_box_area, annotations_builder):
+        self.min_box_area = min_box_area
+        self.label_to_id_map = {}
+        self.id_to_label_map = {}
+        self.annotations_builder = annotations_builder
+
+    def update(self, frame, fn, item): ...
+
+    def add_annotation(self, box_size, fn, label_id, top, left, bottom, right, object_id):
+        if box_size <= self.min_box_area:
+            return
+
+        if fn == 0:
+            fixed = True
+        else:
+            fixed = False
+
+        label = self.id_to_label_map[label_id]
+        self.annotations_builder.add(
+            annotation_definition=dl.Box(top=top, left=left, bottom=bottom, right=right, label=label),
+            fixed=fixed,
+            frame_num=fn,
+            end_frame_num=fn,
+            object_id=object_id,
+        )
+
+
+class BoTSORTTracker(BaseTracker):
+    def __init__(self, opts, annotations_builder):
+        super().__init__(opts.min_box_area, annotations_builder)
+        self.opts = opts
+        self.tracker = BoTSORT(self.opts, frame_rate=20.0)
+        self.tracker.track_high_thresh = 0.11
+        self.tracker.args.track_high_thresh = 0.11
+        self.tracker.new_track_thresh = 0.2
+        self.tracker.args.new_track_thresh = 0.2
+
+    def update(self, frame, fn, frame_item, video_item):
+        annotations_builder = video_item.annotations.builder()
+        frame_annotation = frame_item.annotations.list().annotations
+        tracker_annotations = np.zeros((len(frame_annotation), 6))
+        for i, ann in enumerate(frame_annotation):
+            if ann.type != 'box':
+                continue
+            tracker_annotations[i, :4] = [ann.top, ann.left, ann.bottom, ann.right]
+            try:
+                tracker_annotations[i, 4] = ann.metadata['user']['model']['confidence']
+            except KeyError:
+                tracker_annotations[i, 4] = 1
+            label_id = self.label_to_id_map.get(ann.label, None)
+            if label_id is None:
+                label_id = len(self.label_to_id_map)
+                self.id_to_label_map[label_id] = ann.label
+                self.label_to_id_map[ann.label] = label_id
+            tracker_annotations[i, 5] = label_id
+        online_targets = self.tracker.update(tracker_annotations, frame.copy())
+        for t in online_targets:
+            tlwh = t.tlwh
+            tlbr = t.tlbr
+            tid = t.track_id
+            tcls = t.cls
+            self.add_annotation(tlwh[2] * tlwh[3], fn, tcls, tlbr[0], tlbr[1], tlbr[2], tlbr[3], tid)
+        return annotations_builder
 
 
 class ServiceRunner(dl.BaseServiceRunner):
@@ -141,7 +216,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         # TODO : check if there a batch download
         return items
 
-    def get_items_annotations(self, items):
+    def old_get_items_annotations(self, items):
         frame_annotations_data = []
         for item in items:
             frame_annotations_data.append(
@@ -152,18 +227,17 @@ class ServiceRunner(dl.BaseServiceRunner):
             )
         return frame_annotations_data
 
-    def stitch_and_upload(self, dataset, items):
+    def stitch_and_upload(self, dataset, cv_frames):
         output_video_path = os.path.join(
             self.local_output_folder,
             f"merge_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{self.output_video_type}",
         )
         fourcc = cv2.VideoWriter_fourcc(*("VP80" if self.output_video_type.lower() == "webm" else "mp4v"))
-        input_files = [item.download(local_path=self.local_input_folder) for item in items]
-        writer = cv2.VideoWriter(output_video_path, fourcc, self.fps, ServiceRunner.get_image_size(input_files[0]))
+        writer = cv2.VideoWriter(output_video_path, fourcc, self.fps, (cv_frames[0].shape[1], cv_frames[0].shape[0]))
         # Loop through each input image file and write it to the output video
-        for input_file in input_files:
+        for frame in cv_frames:
             # Write the image to the output video
-            writer.write(cv2.imread(input_file))
+            writer.write(frame)
 
         # Release the VideoWriter object
         writer.release()
@@ -171,6 +245,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         video_item.fps = self.fps
         video_item.update()
         return video_item
+
+    def stitch_items_annotations(self, stitched_item, cv_frames, items):
+        annotation_builder = stitched_item.annotations.builder()
+        for fn, frame in enumerate(cv_frames):
+            self.update_tracker(frame, fn, items[fn], annotation_builder)
+        stitched_item.annotations.upload(annotations=annotation_builder)
 
     def frames_to_vid(self, item: dl.Item, context: dl.Context):
         logger = logging.getLogger('video-utils.frames_to_vid')
@@ -182,10 +262,13 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.local_output_folder = tempfile.mkdtemp(suffix="_output")
 
         items = self.get_input_files(item.dataset)
-        video_item = self.stitch_and_upload(item.dataset, items)
-        frames_annotations = self.get_items_annotations(items)
+        cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
+        video_item = self.stitch_and_upload(item.dataset, cv_frames)
+        self.tracker = BoTSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
 
-        ServiceRunner.upload_annotations(video_item, frames_annotations)
+        for i, (frame_i, item_i) in enumerate(zip(cv_frames, items)):
+            self.tracker.update(frame_i, i, item_i, video_item)
+        video_item.annotations.upload(annotations=self.tracker.annotations_builder)
 
 
 if __name__ == "__main__":
@@ -200,9 +283,9 @@ if __name__ == "__main__":
     context.pipeline_id = "682069122afb795bc3c41d59"
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
-        "fps": 5,
-        "output_dir": "/second_stitching_test",
-        "input_dir": "/split_to_frames_5fps",
+        "fps": 20,
+        "output_dir": "/second_stitching_test_1805",
+        "input_dir": "/split_5_sec_to_one_frame",
         "output_video_type": "webm",
     }
 
