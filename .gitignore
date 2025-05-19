@@ -247,3 +247,9 @@ stitching/BoT_SORT/
 trackings/
 stitching/trackings/
 
+ByteTrack/
+stitching/ByteTrack/
+
+deep_sort_pytorch/
+stitching/deep_sort_pytorch/
+
