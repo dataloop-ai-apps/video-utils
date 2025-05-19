@@ -326,50 +326,21 @@ class ServiceRunner(dl.BaseServiceRunner):
         opts.track_thresh = 0.5  # Confidence threshold for tracking
         opts.match_thresh = 0.8  # IoU threshold for matching
 
-        # Create a dummy video item for the tracker
-        dummy_video_item = type(
-            'DummyVideoItem', (), {'annotations': type('DummyAnnotations', (), {'builder': lambda: None})()}
-        )()
-
-        # Initialize tracker
-        tracker = ByteTrackTracker(opts=opts, annotations_builder=dummy_video_item.annotations.builder())
+        # Initialize tracker without annotations builder
+        tracker = ByteTrackTracker(opts=opts, annotations_builder=None)
 
         # Process previous frames to initialize tracking
         for i, (frame_anns, frame) in enumerate(zip(prev_sub_video_last_frames_annotations, prev_frames)):
-            # Create a dummy frame item for annotations
-            dummy_frame_item = type(
-                'DummyFrameItem',
-                (),
-                {
-                    'annotations': type(
-                        'DummyAnnotations', (), {'list': lambda: type('DummyList', (), {'annotations': frame_anns})()}
-                    )()
-                },
-            )()
-
             # Update tracker with previous frame
-            tracker.update(frame, i, dummy_frame_item)
+            tracker.update(frame, i, frame_anns)
 
         # Process first frame of current sub-video
         current_frame_anns = sub_video_annotations[0]
         # Use the last frame from previous sub-video as reference
         frame = prev_frames[-1]
 
-        # Create a dummy frame item for current annotations
-        dummy_frame_item = type(
-            'DummyFrameItem',
-            (),
-            {
-                'annotations': type(
-                    'DummyAnnotations',
-                    (),
-                    {'list': lambda: type('DummyList', (), {'annotations': current_frame_anns})()},
-                )()
-            },
-        )()
-
         # Update tracker with current frame
-        tracker.update(frame, len(prev_sub_video_last_frames_annotations), dummy_frame_item)
+        tracker.update(frame, len(prev_sub_video_last_frames_annotations), current_frame_anns)
 
         # Get tracking results and update object IDs
         for frame_annotations in sub_video_annotations:
