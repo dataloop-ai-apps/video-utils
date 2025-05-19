@@ -400,9 +400,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         items = self.get_input_files(item.dataset)
         cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
         video_item = self.stitch_and_upload(item.dataset, cv_frames)
-        # self.tracker = ByteTrackTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
+        self.tracker = ByteTrackTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
         # self.tracker = DeepSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
-        self.tracker = BoTSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
+        # self.tracker = BoTSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
 
         for i, (frame_i, item_i) in enumerate(zip(cv_frames, items)):
             self.tracker.update(frame_i, i, item_i, video_item)
@@ -422,8 +422,8 @@ if __name__ == "__main__":
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
         "fps": 20,
-        "output_dir": "/white_dancers_frames_bot_sort",
-        "input_dir": "/white_dancers_frames",
+        "output_dir": "/test_bytetrack_1905",
+        "input_dir": "/split_5_sec_to_one_frame_1805",
         "output_video_type": "webm",
     }
 
