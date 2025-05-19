@@ -221,7 +221,7 @@ if __name__ == "__main__":
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
         "fps": 20,
-        "output_dir": "/test_bytetrack_1905_3",
+        "output_dir": "/test_bytetrack_1905_4",
         "input_dir": "/split_5_sec_to_one_frame_1805",
         "output_video_type": "webm",
     }

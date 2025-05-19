@@ -22,11 +22,12 @@ from deep_sort.deep_sort import DeepSort
 
 
 class BaseTracker:
-    def __init__(self, min_box_area, annotations_builder):
+    def __init__(self, min_box_area, annotations_builder=None):
         self.min_box_area = min_box_area
         self.label_to_id_map = {}
         self.id_to_label_map = {}
         self.annotations_builder = annotations_builder
+        self.annotations_list = []
 
     def update(self, frame, fn, frame_annotations): ...
 
@@ -43,13 +44,25 @@ class BaseTracker:
         if label is None:
             print(f"label is None for object_id: {object_id}")
             return
-        self.annotations_builder.add(
-            annotation_definition=dl.Box(top=top, left=left, bottom=bottom, right=right, label=label),
-            fixed=fixed,
-            frame_num=fn,
-            end_frame_num=fn,
-            object_id=object_id,
-        )
+
+        annotation = {
+            'annotation_definition': dl.Box(top=top, left=left, bottom=bottom, right=right, label=label),
+            'fixed': fixed,
+            'frame_num': fn,
+            'end_frame_num': fn,
+            'object_id': object_id,
+        }
+
+        self.annotations_list.append(annotation)
+
+        if self.annotations_builder is not None:
+            self.annotations_builder.add(
+                annotation_definition=annotation['annotation_definition'],
+                fixed=annotation['fixed'],
+                frame_num=annotation['frame_num'],
+                end_frame_num=annotation['end_frame_num'],
+                object_id=annotation['object_id'],
+            )
 
 
 class ByteTrackTracker(BaseTracker):
