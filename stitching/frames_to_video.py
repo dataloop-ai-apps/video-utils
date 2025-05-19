@@ -22,6 +22,10 @@ from yolox.tracker.byte_tracker import BYTETracker
 sys.path.append(os.path.join(os.path.dirname(__file__), 'BoT_SORT'))
 from tracker.mc_bot_sort import BoTSORT
 
+# Add DeepSORT to Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'deep_sort_pytorch'))
+from deep_sort.deep_sort import DeepSort
+
 
 class BaseTracker:
     def __init__(self, min_box_area, annotations_builder):
@@ -111,11 +115,11 @@ class ByteTrackTracker(BaseTracker):
                 tracker_annotations[i, 4] = ann.metadata['user']['model']['confidence']
             except KeyError:
                 tracker_annotations[i, 4] = 1.0
-            label_id = self.label_to_id_map.get(ann.label, None)
-            if label_id is None:
-                label_id = len(self.label_to_id_map)
-                self.id_to_label_map[label_id] = ann.label
-                self.label_to_id_map[ann.label] = label_id
+            # label_id = self.label_to_id_map.get(ann.label, None)
+            # if label_id is None:
+            #     label_id = len(self.label_to_id_map)
+            #     self.id_to_label_map[label_id] = ann.label
+            #     self.label_to_id_map[ann.label] = label_id
             # tracker_annotations[i, 5] = label_id
 
         # Get image info and size
@@ -139,6 +143,78 @@ class ByteTrackTracker(BaseTracker):
             tid = t.track_id
             # tcls = t.cls
             self.add_annotation(tlwh[2] * tlwh[3], fn, 0, tlbr[0], tlbr[1], tlbr[2], tlbr[3], tid)
+        return annotations_builder
+
+
+class DeepSORTTracker(BaseTracker):
+    def __init__(self, opts, annotations_builder):
+        super().__init__(opts.min_box_area, annotations_builder)
+        self.opts = opts
+        # Initialize your DeepSORT object here.
+        # Adjust the following line to match your library's DeepSORT initialization.
+        # For ZQPei/deep_sort_pytorch, you might need to initialize with build_tracker(...) or similar.
+        model_path = os.path.join(
+            os.path.dirname(__file__), 'deep_sort_pytorch', 'deep_sort', 'deep', 'checkpoint', 'ckpt.t7'
+        )
+        self.tracker = DeepSort(
+            model_path=model_path,  # Path to the appearance model
+            max_dist=0.2,  # Maximum cosine distance threshold
+            min_confidence=0.5,  # Detection confidence threshold
+            nms_max_overlap=0.5,  # Non-maxima suppression threshold
+            max_iou_distance=0.7,  # Maximum IOU distance for track matching
+            max_age=70,  # Maximum number of frames to keep track alive
+            n_init=3,  # Number of frames for track initialization
+            nn_budget=100,  # Maximum size of feature database
+            use_cuda=opts.use_cuda if hasattr(opts, 'use_cuda') else True,
+        )
+
+    def update(self, frame, fn, frame_item, video_item):
+        annotations_builder = video_item.annotations.builder()
+        frame_annotation = frame_item.annotations.list().annotations
+        dets = []
+        confs = []
+        clss = []
+
+        for ann in frame_annotation:
+            if ann.type != 'box':
+                continue
+            # DeepSORT expects xywh format: (center_x, center_y, width, height)
+            x1, y1, x2, y2 = ann.left, ann.top, ann.right, ann.bottom
+            w, h = x2 - x1, y2 - y1
+            cx, cy = x1 + w / 2.0, y1 + h / 2.0
+            dets.append([cx, cy, w, h])
+            try:
+                confs.append(ann.metadata['user']['model']['confidence'])
+            except KeyError:
+                confs.append(1.0)
+            # For class id mapping if needed
+            label_id = self.label_to_id_map.get(ann.label, None)
+            if label_id is None:
+                label_id = len(self.label_to_id_map)
+                self.id_to_label_map[label_id] = ann.label
+                self.label_to_id_map[ann.label] = label_id
+            clss.append(label_id)
+
+        if len(dets) == 0:
+            # No detections for this frame
+            return annotations_builder
+
+        dets = np.array(dets)
+        confs = np.array(confs)
+        clss = np.array(clss)
+
+        # DeepSORT update: adjust as needed for your implementation!
+        # For ZQPei/deep_sort_pytorch it may look like:
+        # outputs, _ = self.tracker.update(dets, confs, clss, frame)
+        # If your tracker expects [N, 4] (xywh), [N], [N], and frame (RGB or BGR as needed).
+        outputs, _ = self.tracker.update(dets, confs, clss, frame)
+
+        for t in outputs:
+            # ZQPei/deep_sort_pytorch returns [x1, y1, x2, y2, class, id]
+            x1, y1, x2, y2, tcls, tid = t
+            box_size = (x2 - x1) * (y2 - y1)
+            self.add_annotation(box_size, fn, int(tcls), y1, x1, y2, x2, int(tid))
+
         return annotations_builder
 
 
@@ -324,8 +400,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         items = self.get_input_files(item.dataset)
         cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
         video_item = self.stitch_and_upload(item.dataset, cv_frames)
-        #        self.tracker = ByteTrackTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
-
+        # self.tracker = ByteTrackTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
+        # self.tracker = DeepSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
         self.tracker = BoTSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
 
         for i, (frame_i, item_i) in enumerate(zip(cv_frames, items)):
@@ -346,8 +422,8 @@ if __name__ == "__main__":
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
         "fps": 20,
-        "output_dir": "/second_stitching_test_1805_33",
-        "input_dir": "/split_5_sec_to_one_frame_1805",
+        "output_dir": "/white_dancers_frames_bot_sort",
+        "input_dir": "/white_dancers_frames",
         "output_video_type": "webm",
     }
 
