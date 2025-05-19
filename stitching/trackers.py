@@ -28,7 +28,7 @@ class BaseTracker:
         self.id_to_label_map = {}
         self.annotations_builder = annotations_builder
 
-    def update(self, frame, fn, frame_item): ...
+    def update(self, frame, fn, frame_annotations): ...
 
     def add_annotation(self, box_size, fn, label_id, top, left, bottom, right, object_id, label=None):
         if box_size <= self.min_box_area:
@@ -74,13 +74,12 @@ class ByteTrackTracker(BaseTracker):
         self.opts.match_thresh = 0.8
         self.tracker = BYTETracker(args=self.opts, frame_rate=20.0)
 
-    def update(self, frame, fn, frame_item):
-        frame_annotation = frame_item.annotations.list().annotations
-        tracker_annotations = np.zeros((len(frame_annotation), 5))
+    def update(self, frame, fn, frame_annotations):
+        tracker_annotations = np.zeros((len(frame_annotations), 5))
         # Store input boxes for later matching
         input_boxes = []  # (left, top, right, bottom, label, ann object)
 
-        for i, ann in enumerate(frame_annotation):
+        for i, ann in enumerate(frame_annotations):
             if ann.type != 'box':
                 continue
             l, t, r, b = ann.left, ann.top, ann.right, ann.bottom
@@ -126,10 +125,9 @@ class BoTSORTTracker(BaseTracker):
         self.tracker.new_track_thresh = 0.2
         self.tracker.args.new_track_thresh = 0.2
 
-    def update(self, frame, fn, frame_item):
-        frame_annotation = frame_item.annotations.list().annotations
-        tracker_annotations = np.zeros((len(frame_annotation), 6))
-        for i, ann in enumerate(frame_annotation):
+    def update(self, frame, fn, frame_annotations):
+        tracker_annotations = np.zeros((len(frame_annotations), 6))
+        for i, ann in enumerate(frame_annotations):
             if ann.type != 'box':
                 continue
             tracker_annotations[i, :4] = [ann.top, ann.left, ann.bottom, ann.right]
@@ -172,13 +170,12 @@ class DeepSORTTracker(BaseTracker):
             use_cuda=opts.use_cuda if hasattr(opts, 'use_cuda') else True,
         )
 
-    def update(self, frame, fn, frame_item):
-        frame_annotation = frame_item.annotations.list().annotations
+    def update(self, frame, fn, frame_annotations):
         dets = []
         confs = []
         clss = []
 
-        for ann in frame_annotation:
+        for ann in frame_annotations:
             if ann.type != 'box':
                 continue
             x1, y1, x2, y2 = ann.left, ann.top, ann.right, ann.bottom

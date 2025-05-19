@@ -203,7 +203,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         # self.tracker = BoTSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
 
         for i, (frame_i, item_i) in enumerate(zip(cv_frames, items)):
-            self.tracker.update(frame_i, i, item_i)
+            frame_annotations = item_i.annotations.list().annotations
+            self.tracker.update(frame_i, i, frame_annotations)
         video_item.annotations.upload(annotations=self.tracker.annotations_builder)
 
 
