@@ -4,11 +4,13 @@ import shutil
 import threading
 import cv2
 import dtlpy as dl
+import numpy as np
+from trackings.utils import load_opt
+from .trackers import ByteTrackTracker
 
 
 class ServiceRunner(dl.BaseServiceRunner):
-    def __init__(self):
-        ...
+    def __init__(self): ...
 
     @staticmethod
     def create_folder(folder):
@@ -28,15 +30,21 @@ class ServiceRunner(dl.BaseServiceRunner):
         :return: true if all of the items are from the same video, false otherwise
         """
         if not all(
-                [all(key in item.metadata for key in ("origin_video_name", "sub_videos_intervals", "time")) for item in
-                 items]):
+            [
+                all(key in item.metadata for key in ("origin_video_name", "sub_videos_intervals", "time"))
+                for item in items
+            ]
+        ):
             return False
         original_name = items[0].metadata["origin_video_name"]
         sub_videos_intervals = items[0].metadata["sub_videos_intervals"]
         time = items[0].metadata["time"]
         for item in items:
-            if item.metadata["origin_video_name"] != original_name or item.metadata[
-                "sub_videos_intervals"] != sub_videos_intervals or item.metadata["time"] != time:
+            if (
+                item.metadata["origin_video_name"] != original_name
+                or item.metadata["sub_videos_intervals"] != sub_videos_intervals
+                or item.metadata["time"] != time
+            ):
                 return False
         return True
 
@@ -56,21 +64,29 @@ class ServiceRunner(dl.BaseServiceRunner):
         for i, input_file in enumerate(input_files):
             item = items[i]
             annotations = item.annotations.list()
-            next_interval_start_frame = sub_videos_intervals[i + 1][0] if i < len(
-                sub_videos_intervals) - 1 else total_frames_count
+            next_interval_start_frame = (
+                sub_videos_intervals[i + 1][0] if i < len(sub_videos_intervals) - 1 else total_frames_count
+            )
             start_frame, end_frame = sub_videos_intervals[i]
             # Open the input video file
             cap = cv2.VideoCapture(input_file)
 
             for frame_index, j in enumerate(range(start_frame, next_interval_start_frame)):
                 frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
-                sub_video_annotations_data.append([{"top": ann.top,
-                                                    "left": ann.left,
-                                                    "bottom": ann.bottom,
-                                                    "right": ann.right,
-                                                    "label": ann.label,
-                                                    "object_visible": ann.object_visible,
-                                                    "object_id": int(ann.id, 16)} for ann in frame_annotations])
+                sub_video_annotations_data.append(
+                    [
+                        {
+                            "top": ann.top,
+                            "left": ann.left,
+                            "bottom": ann.bottom,
+                            "right": ann.right,
+                            "label": ann.label,
+                            "object_visible": ann.object_visible,
+                            "object_id": int(ann.id, 16),
+                        }
+                        for ann in frame_annotations
+                    ]
+                )
                 ret, frame = cap.read()
                 if ret:
                     writer.write(frame)
@@ -103,13 +119,20 @@ class ServiceRunner(dl.BaseServiceRunner):
             ret, frame = cap.read()
             while ret:
                 frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
-                sub_video_annotations_data.append([{"top": ann.top,
-                                                    "left": ann.left,
-                                                    "bottom": ann.bottom,
-                                                    "right": ann.right,
-                                                    "label": ann.label,
-                                                    "object_visible": ann.object_visible,
-                                                    "object_id": int(ann.id, 16)} for ann in frame_annotations])
+                sub_video_annotations_data.append(
+                    [
+                        {
+                            "top": ann.top,
+                            "left": ann.left,
+                            "bottom": ann.bottom,
+                            "right": ann.right,
+                            "label": ann.label,
+                            "object_visible": ann.object_visible,
+                            "object_id": int(ann.id, 16),
+                        }
+                        for ann in frame_annotations
+                    ]
+                )
                 writer.write(frame)
                 ret, frame = cap.read()
                 frame_index += 1
@@ -124,9 +147,9 @@ class ServiceRunner(dl.BaseServiceRunner):
     @staticmethod
     def get_iou(bb1, bb2):
         """
-            Calculate the Intersection over Union (IoU) of two bounding boxes.
-            bb1-2 : list
-                [top, left, bottom, right)
+        Calculate the Intersection over Union (IoU) of two bounding boxes.
+        bb1-2 : list
+            [top, left, bottom, right)
         """
         top1, left1, bottom1, right1 = bb1[0], bb1[1], bb1[2], bb1[3]
         top2, left2, bottom2, right2 = bb2[0], bb2[1], bb2[2], bb2[3]
@@ -167,8 +190,9 @@ class ServiceRunner(dl.BaseServiceRunner):
             for j, prev_annotation in enumerate(prev_sub_video_last_frame_annotations):
                 if j in matched_prev_anns or prev_annotation["label"] != current_annotation["label"]:
                     continue
-                iou = ServiceRunner.get_iou(ServiceRunner.get_bb_from_ann(current_annotation),
-                                            ServiceRunner.get_bb_from_ann(prev_annotation))
+                iou = ServiceRunner.get_iou(
+                    ServiceRunner.get_bb_from_ann(current_annotation), ServiceRunner.get_bb_from_ann(prev_annotation)
+                )
                 if iou > best_match[1]:
                     best_match = (j, iou)
             ann_matches.append([i, best_match[0]])
@@ -199,8 +223,9 @@ class ServiceRunner(dl.BaseServiceRunner):
             if not prev_sub_video_last_frame_annotations_data:
                 prev_sub_video_last_frame_annotations_data = sub_video_annotations_data[-1].copy()
                 continue
-            ServiceRunner.match_annotation_object_id(prev_sub_video_last_frame_annotations_data,
-                                                     sub_video_annotations_data)
+            ServiceRunner.match_annotation_object_id(
+                prev_sub_video_last_frame_annotations_data, sub_video_annotations_data
+            )
             prev_sub_video_last_frame_annotations_data = sub_video_annotations_data[-1].copy()
 
     @staticmethod
@@ -216,15 +241,19 @@ class ServiceRunner(dl.BaseServiceRunner):
         for sub_video_annotations_data in sub_videos_annotations_data:
             for frame_annotations_data in sub_video_annotations_data:
                 for ann in frame_annotations_data:
-                    builder.add(annotation_definition=dl.Box(top=ann["top"],
-                                                             left=ann["left"],
-                                                             bottom=ann["bottom"],
-                                                             right=ann["right"],
-                                                             label=ann["label"]),
-                                object_visible=ann["object_visible"],
-                                frame_num=frame_index,
-                                # need to input the element id to create the connection between frames
-                                object_id=ann["object_id"])
+                    builder.add(
+                        annotation_definition=dl.Box(
+                            top=ann["top"],
+                            left=ann["left"],
+                            bottom=ann["bottom"],
+                            right=ann["right"],
+                            label=ann["label"],
+                        ),
+                        object_visible=ann["object_visible"],
+                        frame_num=frame_index,
+                        # need to input the element id to create the connection between frames
+                        object_id=ann["object_id"],
+                    )
                 frame_index += 1
 
         video_item.annotations.upload(annotations=builder)
@@ -258,16 +287,18 @@ class ServiceRunner(dl.BaseServiceRunner):
         fps = int(cap.get(cv2.CAP_PROP_FPS))
         frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
         cap.release()
-        output_video_path = os.path.join(local_output_folder,
-                                         f"{items[0].metadata['origin_video_name'].replace(f'.{video_type}', '') + '_' if is_same_split else ''}merge_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{video_type}")
+        output_video_path = os.path.join(
+            local_output_folder,
+            f"{items[0].metadata['origin_video_name'].replace(f'.{video_type}', '') + '_' if is_same_split else ''}merge_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{video_type}",
+        )
 
         # Create a VideoWriter object to write the merged video to a file
         writer = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
         if is_same_split:
             sub_videos_intervals = items[0].metadata["sub_videos_intervals"]
-            sub_videos_annotations_data = ServiceRunner.merge_by_sub_videos_intervals(writer, input_files,
-                                                                                      sub_videos_intervals,
-                                                                                      items)
+            sub_videos_annotations_data = ServiceRunner.merge_by_sub_videos_intervals(
+                writer, input_files, sub_videos_intervals, items
+            )
         else:
             sub_videos_annotations_data = ServiceRunner.regular_merge(writer, input_files, items)
         video_item = dataset.items.upload(local_path=output_video_path, remote_path=output_folder)
@@ -275,3 +306,83 @@ class ServiceRunner(dl.BaseServiceRunner):
         ServiceRunner.upload_annotations(video_item, sub_videos_annotations_data)
         shutil.rmtree(local_input_folder, ignore_errors=True)
         shutil.rmtree(local_output_folder, ignore_errors=True)
+
+    @staticmethod
+    def match_annotation_object_id_with_tracker(
+        prev_sub_video_last_frames_annotations, sub_video_annotations, prev_frames
+    ):
+        """
+        Match object IDs between sub-videos using ByteTrack tracker
+        :param prev_sub_video_last_frames_annotations: List of annotations from last N frames of previous sub-video
+        :param sub_video_annotations: List of annotations from current sub-video
+        :param prev_frames: List of actual frame images from previous sub-video
+        """
+        if not prev_sub_video_last_frames_annotations or not sub_video_annotations or not prev_frames:
+            return
+
+        # Initialize tracker with default options
+        opts = load_opt()
+        opts.track_buffer = 30  # Keep track of objects for 30 frames
+        opts.track_thresh = 0.5  # Confidence threshold for tracking
+        opts.match_thresh = 0.8  # IoU threshold for matching
+
+        # Create a dummy video item for the tracker
+        dummy_video_item = type(
+            'DummyVideoItem', (), {'annotations': type('DummyAnnotations', (), {'builder': lambda: None})()}
+        )()
+
+        # Initialize tracker
+        tracker = ByteTrackTracker(opts=opts, annotations_builder=dummy_video_item.annotations.builder())
+
+        # Process previous frames to initialize tracking
+        for i, (frame_anns, frame) in enumerate(zip(prev_sub_video_last_frames_annotations, prev_frames)):
+            # Create a dummy frame item for annotations
+            dummy_frame_item = type(
+                'DummyFrameItem',
+                (),
+                {
+                    'annotations': type(
+                        'DummyAnnotations', (), {'list': lambda: type('DummyList', (), {'annotations': frame_anns})()}
+                    )()
+                },
+            )()
+
+            # Update tracker with previous frame
+            tracker.update(frame, i, dummy_frame_item)
+
+        # Process first frame of current sub-video
+        current_frame_anns = sub_video_annotations[0]
+        # Use the last frame from previous sub-video as reference
+        frame = prev_frames[-1]
+
+        # Create a dummy frame item for current annotations
+        dummy_frame_item = type(
+            'DummyFrameItem',
+            (),
+            {
+                'annotations': type(
+                    'DummyAnnotations',
+                    (),
+                    {'list': lambda: type('DummyList', (), {'annotations': current_frame_anns})()},
+                )()
+            },
+        )()
+
+        # Update tracker with current frame
+        tracker.update(frame, len(prev_sub_video_last_frames_annotations), dummy_frame_item)
+
+        # Get tracking results and update object IDs
+        for frame_annotations in sub_video_annotations:
+            for annotation in frame_annotations:
+                # Find matching track ID from tracker's state
+                for track in tracker.tracker.tracked_stracks:
+                    if track.is_activated:
+                        # Calculate IoU between annotation and track
+                        ann_box = [annotation["top"], annotation["left"], annotation["bottom"], annotation["right"]]
+                        track_box = [track.tlbr[0], track.tlbr[1], track.tlbr[2], track.tlbr[3]]
+                        iou = ServiceRunner.get_iou(ann_box, track_box)
+
+                        # If IoU is high enough, update the object ID
+                        if iou > opts.match_thresh:
+                            annotation["object_id"] = track.track_id
+                            break
