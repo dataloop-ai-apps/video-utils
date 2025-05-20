@@ -6,7 +6,17 @@ import cv2
 import dtlpy as dl
 import numpy as np
 from trackings.utils import load_opt
-from .trackers import ByteTrackTracker
+import tempfile
+import sys
+from dotenv import load_dotenv
+
+# Add the parent directory to Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
+from stitching.trackers import ByteTrackTracker, BoTSORTTracker, DeepSORTTracker
 
 
 class ServiceRunner(dl.BaseServiceRunner):
@@ -354,20 +364,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
             for frame_index, j in enumerate(range(start_frame, next_interval_start_frame)):
                 frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
-                merged_video_annotations.append(
-                    [
-                        {
-                            "top": ann.top,
-                            "left": ann.left,
-                            "bottom": ann.bottom,
-                            "right": ann.right,
-                            "label": ann.label,
-                            "object_visible": ann.object_visible,
-                            "object_id": int(ann.id, 16),
-                        }
-                        for ann in frame_annotations
-                    ]
-                )
+                merged_video_annotations.append(frame_annotations)
                 ret, frame = cap.read()
                 if ret:
                     merged_video_frames.append(frame)
@@ -418,20 +415,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             ret, frame = cap.read()
             while ret:
                 frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
-                merged_video_annotations.append(
-                    [
-                        {
-                            "top": ann.top,
-                            "left": ann.left,
-                            "bottom": ann.bottom,
-                            "right": ann.right,
-                            "label": ann.label,
-                            "object_visible": ann.object_visible,
-                            "object_id": int(ann.id, 16),
-                        }
-                        for ann in frame_annotations
-                    ]
-                )
+                merged_video_annotations.append(frame_annotations)
                 merged_video_frames.append(frame)
                 writer.write(frame)
                 ret, frame = cap.read()
@@ -454,16 +438,14 @@ class ServiceRunner(dl.BaseServiceRunner):
         return items
 
     def set_config_params(self, node: dl.PipelineNode):
-        self.fps = node.metadata['customNodeConfig']['fps']
         self.output_dir = node.metadata['customNodeConfig']['output_dir']
-        self.output_video_type = node.metadata['customNodeConfig']['output_video_type']
         self.input_dir = node.metadata['customNodeConfig']['input_dir']
 
     def upload_annotations(self, video_item, merged_video_annotations, merged_video_frames):
         tracker = DeepSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
         for i, (frame, frame_annotations) in enumerate(zip(merged_video_frames, merged_video_annotations)):
             tracker.update(frame, i, frame_annotations)
-        video_item.annotations.upload(annotations=self.tracker.annotations_builder)
+        video_item.annotations.upload(annotations=tracker.annotations_builder)
 
     def videos_to_video(self, item: dl.Item, context: dl.Context):
 
@@ -473,6 +455,10 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.local_output_folder = tempfile.mkdtemp(suffix="_output")
 
         items = self.get_input_files(item.dataset)
+        if not items or len(items) == 0:
+            print("No videos match to merge")
+            return
+        is_same_split = ServiceRunner.is_items_from_same_split(items)
         input_files = [item.download(local_path=self.local_input_folder) for item in items]
         first_input_file = input_files[0]
         video_type = os.path.splitext(os.path.basename(first_input_file))[1].replace(".", "")
@@ -483,7 +469,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
         cap.release()
         output_video_path = os.path.join(
-            local_output_folder,
+            self.local_output_folder,
             f"{items[0].metadata['origin_video_name'].replace(f'.{video_type}', '') + '_' if is_same_split else ''}merge_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{video_type}",
         )
 
@@ -497,7 +483,24 @@ class ServiceRunner(dl.BaseServiceRunner):
         else:
             merged_video_annotations, merged_video_frames = self.regular_merge(writer, input_files, items)
 
-        video_item = item.dataset.items.upload(local_path=output_video_path, remote_path=self.output_folder)
+        video_item = item.dataset.items.upload(local_path=output_video_path, remote_path=self.output_dir)
         video_item.fps = fps
         video_item.update()
         self.upload_annotations(video_item, merged_video_annotations, merged_video_frames)
+
+
+if __name__ == "__main__":
+    if dl.token_expired():
+        dl.login()
+
+    load_dotenv()
+    api_key = os.getenv('DATALOOP_API_KEY')
+    dl.login_api_key(api_key=api_key)
+    runner = ServiceRunner()
+    context = dl.Context()
+    context.pipeline_id = "682069122afb795bc3c41d59"
+    context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
+    context.node.metadata["customNodeConfig"] = {"output_dir": "/videos_to_video_205_1", "input_dir": "/5_sec_videos"}
+
+    # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
+    runner.videos_to_video(item=dl.items.get(item_id="6823077f82b17749dc98a968"), context=context)

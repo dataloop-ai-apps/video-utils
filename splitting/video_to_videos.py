@@ -85,10 +85,10 @@ class ServiceRunner(dl.BaseServiceRunner):
             num_frames_per_split = []
             for ltime in out_length:
                 assert ltime > 0, "length of sub video must be greater then 0"
-                num_frames_per_split.append(ltime * self.fps)
+                num_frames_per_split.append(int(ltime * self.fps))
         else:
             assert out_length > 0, "length of sub video must be greater then 0"
-            num_frames_per_split = out_length * self.fps
+            num_frames_per_split = int(out_length * self.fps)
         return self.get_sub_videos_intervals_by_num_frames(num_frames_per_split)
 
     def set_config_params(self, node: dl.PipelineNode):
@@ -239,10 +239,10 @@ if __name__ == "__main__":
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
         "split_type": "out_length",
-        "splitter_arg": 15,
-        "output_dir": "/15_sec_videos",
+        "splitter_arg": 2.5,
+        "output_dir": "/2.5_sec_videos",
         "n_overlap": 0,
     }
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.video_to_videos(item=dl.items.get(item_id="6821ec8fb188d7f242334661"), context=context)
+    runner.video_to_videos(item=dl.items.get(item_id="6823077f82b17749dc98a968"), context=context)
