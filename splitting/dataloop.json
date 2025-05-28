@@ -110,7 +110,7 @@
         "description": "Split video into frames by structural or embedding similarity.",
         "invoke": {
           "type": "function",
-          "namespace": "video-to-frames.video-to-frames.video_to_frames"
+          "namespace": "video-to-frames.smart-subsampling.video_to_frames"
         },
         "categories": [
           "video-utils"
@@ -306,7 +306,7 @@
     "modules": [
       {
         "name": "video-to-frames",
-        "entryPoint": "video_to_frames/video_to_frames.py",
+        "entryPoint": "splitting/video_to_frames.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
@@ -326,7 +326,7 @@
       },
       {
         "name": "video-to-videos",
-        "entryPoint": "video_to_videos/video_to_videos.py",
+        "entryPoint": "splitting/video_to_videos.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
