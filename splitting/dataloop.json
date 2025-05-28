@@ -26,6 +26,8 @@
       {
         "scope": "node",
         "name": "video-to-frames",
+        "displayName": "Video to Frames",
+        "description": "Split video into frames by number of splits, time interval, or frames interval.",
         "invoke": {
           "type": "function",
           "namespace": "video-to-frames.video-to-frames.video_to_frames"
@@ -53,10 +55,6 @@
                   {
                     "label": "Frames Interval",
                     "value": "frames_interval"
-                  },
-                  {
-                    "label": "Smart Subsampling",
-                    "value": "smart_subsampling"
                   }
                 ],
                 "default": "num_splits"
@@ -71,7 +69,7 @@
             },
             {
               "name": "output_dir",
-              "title": "Output Directory",
+              "title": "Dataset Output Directory",
               "props": {
                 "title": true,
                 "type": "string",
@@ -108,6 +106,8 @@
       {
         "scope": "node",
         "name": "smart-frames-splitting",
+        "displayName": "Smart Frames Splitting",
+        "description": "Split video into frames by structural or embedding similarity.",
         "invoke": {
           "type": "function",
           "namespace": "video-to-frames.video-to-frames.video_to_frames"
@@ -119,7 +119,7 @@
           "fields": [
             {
               "name": "output_dir",
-              "title": "Output Directory",
+              "title": "Dataset Output Directory",
               "props": {
                 "title": true,
                 "type": "string",
@@ -136,8 +136,53 @@
               "widget": "dl-input"
             },
             {
+              "name": "split_type",
+              "title": "Split Type",
+              "props": {
+                "type": "string",
+                "required": true,
+                "options": [
+                  {
+                    "label": "Structural Similarity",
+                    "value": "structural_similarity_sampling"
+                  },
+                  {
+                    "label": "Embedding Similarity",
+                    "value": "embedding_similarity_sampling"
+                  }
+                ],
+                "default": "embedding_similarity_sampling"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-select"
+            },
+            {
+              "name": "min_interval",
+              "title": "The minimum interval between frames to be considered for splitting.",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 10,
+                "min": 1,
+                "step": 1,
+                "required": true
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
               "name": "window_size",
-              "title": "The size of the sliding window (7x7 pixels) used to compare frame similarity.",
+              "title": "The size of the sliding window used (only relevant for structural similarity).",
               "props": {
                 "title": true,
                 "type": "number",
@@ -180,6 +225,8 @@
       {
         "scope": "node",
         "name": "video-to-videos",
+        "displayName": "Video to Videos",
+        "description": "Split video into multiple videos by number of splits, time interval, or frames interval.",
         "invoke": {
           "type": "function",
           "namespace": "video-to-videos.video-to-videos.video_to_videos"
@@ -270,18 +317,6 @@
               {
                 "type": "Item",
                 "name": "item"
-              },
-              {
-                "type": "String",
-                "name": "output_folder"
-              },
-              {
-                "type": "String",
-                "name": "mode"
-              },
-              {
-                "type": "Integer",
-                "name": "splitter_arg"
               }
             ],
             "displayIcon": "qa-sampling",
@@ -302,22 +337,6 @@
               {
                 "type": "Item",
                 "name": "item"
-              },
-              {
-                "type": "String",
-                "name": "output_folder"
-              },
-              {
-                "type": "String",
-                "name": "mode"
-              },
-              {
-                "type": "Integer",
-                "name": "splitter_arg"
-              },
-              {
-                "type": "Integer",
-                "name": "n_overlap"
               }
             ],
             "displayIcon": "qa-sampling",
@@ -327,29 +346,17 @@
       },
       {
         "name": "smart-subsampling",
-        "entryPoint": "smart_subsampling/smart_subsampling.py",
+        "entryPoint": "splitting/video_to_frames.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
           {
             "name": "video_to_frames_smart_subsampling",
-            "description": "video splitting by similarity",
+            "description": "video splitting by structural or embedding similarity",
             "input": [
               {
                 "type": "Item",
                 "name": "item"
-              },
-              {
-                "type": "String",
-                "name": "output_folder"
-              },
-              {
-                "type": "Float",
-                "name": "threshold"
-              },
-              {
-                "type": "Integer",
-                "name": "window_size"
               }
             ],
             "displayIcon": "qa-sampling",

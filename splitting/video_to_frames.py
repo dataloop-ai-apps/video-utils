@@ -27,6 +27,15 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.window_size = None
 
     def get_embedding(self, frame):
+        """
+        Get embedding vector for a frame using ResNet50
+
+        Args:
+            frame: Input video frame
+
+        Returns:
+            numpy array: Frame embedding vector
+        """
         # Resize and preprocess the frame
         img = cv2.resize(frame, (224, 224))
         img = image.img_to_array(img)
@@ -36,6 +45,16 @@ class ServiceRunner(dl.BaseServiceRunner):
         return self.embedder.predict(img).flatten()
 
     def embedding_similarity_sampling(self, cap, fps):
+        """
+        Sample frames based on embedding similarity using cosine distance.
+
+        Args:
+            cap: OpenCV video capture object
+            fps: Video frames per second
+
+        Returns:
+            list: Frame indices that meet similarity threshold
+        """
         logger.info(f"embedding_similarity_sampling: {self.threshold}, {self.min_interval}")
         frames_list = []
         frame_count = 0
@@ -72,6 +91,16 @@ class ServiceRunner(dl.BaseServiceRunner):
         return frames_list
 
     def structural_similarity_sampling(self, cap, fps):
+        """
+        Sample frames based on structural similarity between consecutive frames.
+
+        Args:
+            cap: OpenCV video capture object
+            fps: Video frames per second
+
+        Returns:
+            list: Frame indices that meet similarity threshold
+        """
         # structural similarity sampling
         logger.info(f"structural_similarity_sampling: {self.window_size}, {self.threshold}, {self.min_interval}")
 
@@ -108,6 +137,15 @@ class ServiceRunner(dl.BaseServiceRunner):
         return frames_list
 
     def get_frames_list(self, cap):
+        """
+        Get list of frame indices to extract based on split type.
+
+        Args:
+            cap: OpenCV video capture object
+
+        Returns:
+            list: Frame indices to extract
+        """
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = int(cap.get(cv2.CAP_PROP_FPS))
         logger.info(f"split_type: {self.split_type}")
@@ -132,6 +170,15 @@ class ServiceRunner(dl.BaseServiceRunner):
         return self.structural_similarity_sampling(cap, fps)
 
     def upload_frames(self, item, frames_list, cap, temp_dir):
+        """
+        Upload extracted frames as new items with annotations.
+
+        Args:
+            item: Source video item
+            frames_list: List of frame indices to extract
+            cap: OpenCV video capture object
+            temp_dir: Temporary directory for frame storage
+        """
         if len(frames_list) == 0:
             return
         num_digits = len(str(max(frames_list)))
@@ -162,6 +209,16 @@ class ServiceRunner(dl.BaseServiceRunner):
                     frame_item.annotations.upload(builder)
 
     def video_to_frames(self, item: dl.Item, context: dl.Context):
+        """
+        Split video into frames based on configured split type and parameters.
+
+        Args:
+            item (dl.Item): Input video item
+            context (dl.Context): Pipeline context containing node configuration
+
+        Returns:
+            None
+        """
 
         logger.info('Running service Video To Frames')
 
@@ -204,11 +261,11 @@ if __name__ == "__main__":
     #     "output_dir": "/white_dancers_frames",
     # }
 
-    context.node.metadata["customNodeConfig"] = {
-        "split_type": "structural_similarity_sampling",
-        "window_size": 9,
-        "threshold": 0.8,
-        "min_interval": 0.2,
-        "output_dir": "/check_structural_similarity_high_threshold_2805_2",
-    }
+    # context.node.metadata["customNodeConfig"] = {
+    #     "split_type": "structural_similarity_sampling",
+    #     "window_size": 9,
+    #     "threshold": 0.8,
+    #     "min_interval": 0.2,
+    #     "output_dir": "/check_structural_similarity_high_threshold_2805_2",
+    # }
     runner.video_to_frames(item=dl.items.get(item_id="6823078182b177d8b698a9b2"), context=context)
