@@ -8,6 +8,7 @@ import numpy as np
 from trackings.utils import load_opt
 import tempfile
 import sys
+import copy
 from dotenv import load_dotenv
 
 # Add the parent directory to Python path
@@ -21,6 +22,26 @@ from stitching.trackers import ByteTrackTracker, BoTSORTTracker, DeepSORTTracker
 
 class ServiceRunner(dl.BaseServiceRunner):
     def __init__(self): ...
+
+    @staticmethod
+    def clone_annotation(ann: dl.Annotation):
+        """
+        Clone an existing Annotation object, returning a new Annotation instance
+        with the same content but no platform ID.
+        """
+        return ann.__class__.new(
+            item=ann.item,
+            annotation_definition=ann.annotation_definition,
+            object_id=ann.object_id,
+            automated=ann.automated,
+            metadata=copy.deepcopy(ann.metadata),
+            frame_num=ann.start_frame,
+            parent_id=ann.parent_id,
+            start_time=ann.start_time,
+            item_height=ann.item_height,
+            item_width=ann.item_width,
+            end_time=ann.end_time,
+        )
 
     @staticmethod
     def create_folder(folder):
@@ -58,64 +79,64 @@ class ServiceRunner(dl.BaseServiceRunner):
                 return False
         return True
 
-    @staticmethod
-    def merge_by_sub_videos_intervals(writer, input_files, sub_videos_intervals, items):
-        """
-        merges videos by sub videos intervals
-        :param writer: handler of write video
-        :param input_files: the sub videos to merge
-        :param sub_videos_intervals: the sub videos intervals of the videos
-        :param items: the items of the videos
-        """
-        sub_videos_annotations_data = []
-        sub_videos_frames = []
-        curr_sub_video_frames = []
-        curr_sub_video_annotations = []
-        total_frames_count = sub_videos_intervals[-1][1] + 1
-        # Loop through each input video file and write its frames to the output video
-        for i, input_file in enumerate(input_files):
-            item = items[i]
-            annotations = item.annotations.list()
-            next_interval_start_frame = (
-                sub_videos_intervals[i + 1][0] if i < len(sub_videos_intervals) - 1 else total_frames_count
-            )
-            start_frame, end_frame = sub_videos_intervals[i]
-            # Open the input video file
-            cap = cv2.VideoCapture(input_file)
+    # @staticmethod
+    # def merge_by_sub_videos_intervals(writer, input_files, sub_videos_intervals, items):
+    #     """
+    #     merges videos by sub videos intervals
+    #     :param writer: handler of write video
+    #     :param input_files: the sub videos to merge
+    #     :param sub_videos_intervals: the sub videos intervals of the videos
+    #     :param items: the items of the videos
+    #     """
+    #     sub_videos_annotations_data = []
+    #     sub_videos_frames = []
+    #     curr_sub_video_frames = []
+    #     curr_sub_video_annotations = []
+    #     total_frames_count = sub_videos_intervals[-1][1] + 1
+    #     # Loop through each input video file and write its frames to the output video
+    #     for i, input_file in enumerate(input_files):
+    #         item = items[i]
+    #         annotations = item.annotations.list()
+    #         next_interval_start_frame = (
+    #             sub_videos_intervals[i + 1][0] if i < len(sub_videos_intervals) - 1 else total_frames_count
+    #         )
+    #         start_frame, end_frame = sub_videos_intervals[i]
+    #         # Open the input video file
+    #         cap = cv2.VideoCapture(input_file)
 
-            for frame_index, j in enumerate(range(start_frame, next_interval_start_frame)):
-                frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
-                curr_sub_video_annotations.append(
-                    [
-                        {
-                            "top": ann.top,
-                            "left": ann.left,
-                            "bottom": ann.bottom,
-                            "right": ann.right,
-                            "label": ann.label,
-                            "object_visible": ann.object_visible,
-                            "object_id": int(ann.id, 16),
-                        }
-                        for ann in frame_annotations
-                    ]
-                )
-                ret, frame = cap.read()
-                if ret:
-                    curr_sub_video_frames.append(frame)
-                    writer.write(frame)
-                else:
-                    break
+    #         for frame_index, j in enumerate(range(start_frame, next_interval_start_frame)):
+    #             frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
+    #             curr_sub_video_annotations.append(
+    #                 [
+    #                     {
+    #                         "top": ann.top,
+    #                         "left": ann.left,
+    #                         "bottom": ann.bottom,
+    #                         "right": ann.right,
+    #                         "label": ann.label,
+    #                         "object_visible": ann.object_visible,
+    #                         "object_id": int(ann.id, 16),
+    #                     }
+    #                     for ann in frame_annotations
+    #                 ]
+    #             )
+    #             ret, frame = cap.read()
+    #             if ret:
+    #                 curr_sub_video_frames.append(frame)
+    #                 writer.write(frame)
+    #             else:
+    #                 break
 
-            # TODO : this copy is not needed
-            sub_videos_annotations_data.append(curr_sub_video_annotations.copy())
-            curr_sub_video_annotations = []
-            sub_videos_frames.append(curr_sub_video_frames.copy())
-            curr_sub_video_frames = []
-            # Release the input video file
-            cap.release()
-        # Release the VideoWriter object
-        writer.release()
-        return sub_videos_annotations_data, sub_videos_frames
+    #         # TODO : this copy is not needed
+    #         sub_videos_annotations_data.append(curr_sub_video_annotations.copy())
+    #         curr_sub_video_annotations = []
+    #         sub_videos_frames.append(curr_sub_video_frames.copy())
+    #         curr_sub_video_frames = []
+    #         # Release the input video file
+    #         cap.release()
+    #     # Release the VideoWriter object
+    #     writer.release()
+    #     return sub_videos_annotations_data, sub_videos_frames
 
     @staticmethod
     def get_iou(bb1, bb2):
@@ -364,7 +385,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
             for frame_index, j in enumerate(range(start_frame, next_interval_start_frame)):
                 frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
-                merged_video_annotations.append(frame_annotations)
+                merged_video_annotations.append([ServiceRunner.clone_annotation(ann) for ann in frame_annotations])
                 ret, frame = cap.read()
                 if ret:
                     merged_video_frames.append(frame)
@@ -376,6 +397,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             cap.release()
         # Release the VideoWriter object
         writer.release()
+
         return merged_video_annotations, merged_video_frames
 
     def merge_annotations_id(self, sub_videos_annotations_data, sub_videos_frames):
@@ -415,7 +437,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             ret, frame = cap.read()
             while ret:
                 frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
-                merged_video_annotations.append(frame_annotations)
+                merged_video_annotations.append([ServiceRunner.clone_annotation(ann) for ann in frame_annotations])
                 merged_video_frames.append(frame)
                 writer.write(frame)
                 ret, frame = cap.read()
@@ -444,6 +466,7 @@ class ServiceRunner(dl.BaseServiceRunner):
     def upload_annotations(self, video_item, merged_video_annotations, merged_video_frames):
         tracker = DeepSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
         for i, (frame, frame_annotations) in enumerate(zip(merged_video_frames, merged_video_annotations)):
+            print(f"-HHH- frame {i} top : {frame_annotations[0].top}")
             tracker.update(frame, i, frame_annotations)
         video_item.annotations.upload(annotations=tracker.annotations_builder)
 
@@ -477,10 +500,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         writer = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
         if is_same_split:
             sub_videos_intervals = items[0].metadata["sub_videos_intervals"]
+            print(f"-HHH- merge by sub videos intervals {sub_videos_intervals}")
             merged_video_annotations, merged_video_frames = self.merge_by_sub_videos_intervals(
                 writer, input_files, sub_videos_intervals, items
             )
         else:
+            print("regular merge")
             merged_video_annotations, merged_video_frames = self.regular_merge(writer, input_files, items)
 
         video_item = item.dataset.items.upload(local_path=output_video_path, remote_path=self.output_dir)
@@ -500,7 +525,31 @@ if __name__ == "__main__":
     context = dl.Context()
     context.pipeline_id = "682069122afb795bc3c41d59"
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
-    context.node.metadata["customNodeConfig"] = {"output_dir": "/videos_to_video_205_1", "input_dir": "/5_sec_videos"}
+    context.node.metadata["customNodeConfig"] = {
+        "output_dir": "/videos_to_video_2805_25",
+        "input_dir": "/merge_videos_testcase",
+    }
+
+    # export PYTHONPATH=/app/BoT_SORT
+
+    #    16  python app/tmp.py
+
+    #    17  docker ps
+
+    #    18  exit
+
+    #    19  python app/stitching/frames_to_video.py
+
+    #    20  export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+
+    # export CUDA_HOME=/usr/local/cuda-11.8
+    # export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+    # export PYTHONPATH=/app/BoT_SORT
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.videos_to_video(item=dl.items.get(item_id="6823077f82b17749dc98a968"), context=context)
+
+    # pip install cython
+    # pip install 'git+https://github.com/cocodataset/cocoapi.git#subdirectory=PythonAPI'
+    # pip install cython_bbox
+
+    runner.videos_to_video(item=dl.items.get(item_id="682c716f3bf48ff6189a3e57"), context=context)
