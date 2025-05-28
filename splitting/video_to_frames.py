@@ -13,10 +13,18 @@ from tensorflow.keras.preprocessing import image
 from scipy.spatial.distance import cosine
 import numpy as np
 
+logger = logging.getLogger('video-utils.video_to_frames')
+
 
 class ServiceRunner(dl.BaseServiceRunner):
     def __init__(self):
         self.embedder = ResNet50(weights="imagenet", include_top=False, pooling="avg")
+        self.split_type = None
+        self.dl_output_folder = None
+        self.splitter_arg = None
+        self.threshold = None
+        self.min_interval = None
+        self.window_size = None
 
     def get_embedding(self, frame):
         # Resize and preprocess the frame
@@ -27,59 +35,45 @@ class ServiceRunner(dl.BaseServiceRunner):
         # Get the embedding
         return self.embedder.predict(img).flatten()
 
-    def get_frames_list(self, cap):
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        if self.split_type == 'frames_interval':
-            print(f"frames_interval: {self.splitter_arg}")
-            return list(range(0, total_frames, self.splitter_arg))
-        if self.split_type == 'time_interval':
-            print(f"time_interval: {self.splitter_arg}")
-            return list(range(0, total_frames, int(fps * self.splitter_arg)))
-        if self.split_type == 'num_splits':
-            print(f"num_splits: {self.splitter_arg}")
-            divisor = (self.splitter_arg - 1) - (0 if total_frames % (self.splitter_arg - 1) else 1)
-            frames_interval = total_frames // divisor
-            print(f"frames_interval: {frames_interval}")
-            return list(range(0, total_frames, frames_interval))
-        if self.split_type == 'embedding_similarity_sampling':
-            print(f"embedding_similarity_sampling: {self.threshold}, {self.min_interval}")
-            frames_list = []
-            frame_count = 0
-            prev_embedding = None
-            min_interval = int(fps * self.min_interval)  # convert seconds to frames
-            i_saved = 0
+    def embedding_similarity_sampling(self, cap, fps):
+        logger.info(f"embedding_similarity_sampling: {self.threshold}, {self.min_interval}")
+        frames_list = []
+        frame_count = 0
+        prev_embedding = None
+        min_interval = int(fps * self.min_interval)  # convert seconds to frames
+        i_saved = 0
 
-            while True:
-                success, frame = cap.read()
-                if not success:
-                    break
+        while True:
+            success, frame = cap.read()
+            if not success:
+                break
 
-                if (frame_count - i_saved) < min_interval:
-                    frame_count += 1
-                    continue
-
-                if prev_embedding is None:
-                    prev_embedding = self.get_embedding(frame)
-                    frames_list.append(frame_count)
-                    i_saved = frame_count
-                    frame_count += 1
-                    continue
-
-                embedding = self.get_embedding(frame)
-                distance = cosine(prev_embedding, embedding)
-
-                if distance > self.threshold:
-                    frames_list.append(frame_count)
-                    i_saved = frame_count
-                    prev_embedding = embedding
-
+            if (frame_count - i_saved) < min_interval:
                 frame_count += 1
+                continue
 
-            return frames_list
+            if prev_embedding is None:
+                prev_embedding = self.get_embedding(frame)
+                frames_list.append(frame_count)
+                i_saved = frame_count
+                frame_count += 1
+                continue
 
+            embedding = self.get_embedding(frame)
+            distance = cosine(prev_embedding, embedding)
+
+            if distance > self.threshold:
+                frames_list.append(frame_count)
+                i_saved = frame_count
+                prev_embedding = embedding
+
+            frame_count += 1
+
+        return frames_list
+
+    def structural_similarity_sampling(self, cap, fps):
         # structural similarity sampling
-        print(f"structural_similarity_sampling: {self.window_size}, {self.threshold}, {self.min_interval}")
+        logger.info(f"structural_similarity_sampling: {self.window_size}, {self.threshold}, {self.min_interval}")
 
         frames_list = []
         frame_count = 0
@@ -113,6 +107,30 @@ class ServiceRunner(dl.BaseServiceRunner):
             frame_count += 1
         return frames_list
 
+    def get_frames_list(self, cap):
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        logger.info(f"split_type: {self.split_type}")
+        if self.split_type == 'frames_interval':
+            logger.info(f"frames_interval: {self.splitter_arg}")
+            return list(range(0, total_frames, self.splitter_arg))
+
+        if self.split_type == 'time_interval':
+            logger.info(f"time_interval: {self.splitter_arg}")
+            return list(range(0, total_frames, int(fps * self.splitter_arg)))
+
+        if self.split_type == 'num_splits':
+            logger.info(f"num_splits: {self.splitter_arg}")
+            divisor = (self.splitter_arg - 1) - (0 if total_frames % (self.splitter_arg - 1) else 1)
+            frames_interval = total_frames // divisor
+            logger.info(f"frames_interval: {frames_interval}")
+            return list(range(0, total_frames, frames_interval))
+
+        if self.split_type == 'embedding_similarity_sampling':
+            return self.embedding_similarity_sampling(cap, fps)
+
+        return self.structural_similarity_sampling(cap, fps)
+
     def upload_frames(self, item, frames_list, cap, temp_dir):
         if len(frames_list) == 0:
             return
@@ -144,7 +162,7 @@ class ServiceRunner(dl.BaseServiceRunner):
                     frame_item.annotations.upload(builder)
 
     def video_to_frames(self, item: dl.Item, context: dl.Context):
-        logger = logging.getLogger('video-utils.video_to_frames')
+
         logger.info('Running service Video To Frames')
 
         node = context.node
@@ -160,10 +178,10 @@ class ServiceRunner(dl.BaseServiceRunner):
                 self.window_size = node.metadata['customNodeConfig']['window_size']
 
         temp_dir = tempfile.mkdtemp()
-        os.makedirs(temp_dir, exist_ok=True)
         input_video = item.download(local_path=temp_dir)
         cap = cv2.VideoCapture(input_video)
         frames_list = self.get_frames_list(cap)
+        logger.info(f"frames_list: {frames_list}")
         self.upload_frames(item, frames_list, cap, temp_dir)
         cap.release()
 
@@ -191,6 +209,6 @@ if __name__ == "__main__":
         "window_size": 9,
         "threshold": 0.8,
         "min_interval": 0.2,
-        "output_dir": "/check_structural_similarity_high_threshold_1905",
+        "output_dir": "/check_structural_similarity_high_threshold_2805_2",
     }
-    runner.video_to_frames(item=dl.items.get(item_id="6821ec8fb188d7f242334661"), context=context)
+    runner.video_to_frames(item=dl.items.get(item_id="6823078182b177d8b698a9b2"), context=context)
