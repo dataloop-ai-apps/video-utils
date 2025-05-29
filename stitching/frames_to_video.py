@@ -20,6 +20,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.output_dir = None
         self.output_video_type = None
         self.input_dir = None
+        self.trackerName = None
         self.tracker = None
 
     def set_config_params(self, node: dl.PipelineNode) -> None:
@@ -33,7 +34,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.output_dir = node.metadata['customNodeConfig']['output_dir']
         self.output_video_type = node.metadata['customNodeConfig']['output_video_type']
         self.input_dir = node.metadata['customNodeConfig']['input_dir']
-        self.tracker = node.metadata['customNodeConfig']['tracker']
+        self.trackerName = node.metadata['customNodeConfig']['tracker']
         logger.info(f"customNodeConfig: {node.metadata['customNodeConfig']}")
 
     def get_input_items(self, dataset: dl.Dataset) -> List[dl.Item]:
@@ -110,17 +111,17 @@ class ServiceRunner(dl.BaseServiceRunner):
         cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
         video_item = self.stitch_and_upload(item.dataset, cv_frames)
         builder = video_item.annotations.builder()
-        if self.tracker == "ByteTrack":
+        if self.trackerName == "ByteTrack":
             self.tracker = ByteTrackTracker(opts=load_opt(), annotations_builder=builder)
-        elif self.tracker == "DeepSORT":
+        elif self.trackerName == "DeepSORT":
             self.tracker = DeepSORTTracker(opts=load_opt(), annotations_builder=builder)
-        elif self.tracker == "BoTSORT":
+        elif self.trackerName == "BoTSORT":
             self.tracker = BoTSORTTracker(opts=load_opt(), annotations_builder=builder)
-        logger.info(f"Tracking frames")
+        logger.info("Tracking frames")
         for i, (frame_i, item_i) in enumerate(zip(cv_frames, items)):
             frame_annotations = item_i.annotations.list().annotations
             self.tracker.update(frame_i, i, frame_annotations)
-        logger.info(f"Uploading annotations to video")
+        logger.info("Uploading annotations to video")
         video_item.annotations.upload(annotations=builder)
 
 
@@ -137,7 +138,7 @@ if __name__ == "__main__":
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
         "fps": 20,
-        "output_dir": "/test_bytetrack_2805_22",
+        "output_dir": "/test_bytetrack_2805_23",
         "input_dir": "/split_5_sec_to_one_frame",
         "output_video_type": "webm",
         "tracker": "ByteTrack",

@@ -261,11 +261,11 @@ if __name__ == "__main__":
     #     "output_dir": "/white_dancers_frames",
     # }
 
-    # context.node.metadata["customNodeConfig"] = {
-    #     "split_type": "structural_similarity_sampling",
-    #     "window_size": 9,
-    #     "threshold": 0.8,
-    #     "min_interval": 0.2,
-    #     "output_dir": "/check_structural_similarity_high_threshold_2805_2",
-    # }
+    context.node.metadata["customNodeConfig"] = {
+        "split_type": "structural_similarity_sampling",
+        "window_size": 9,
+        "threshold": 0.8,
+        "min_interval": 0.2,
+        "output_dir": "/check_structural_similarity_high_threshold_2805_2",
+    }
     runner.video_to_frames(item=dl.items.get(item_id="6823078182b177d8b698a9b2"), context=context)

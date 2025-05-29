@@ -1,7 +1,6 @@
 import datetime
 import os
 import shutil
-import threading
 import cv2
 import dtlpy as dl
 import numpy as np
@@ -10,14 +9,11 @@ import tempfile
 import sys
 import copy
 from dotenv import load_dotenv
+import logging
 
-# Add the parent directory to Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
+from trackers import ByteTrackTracker, BoTSORTTracker, DeepSORTTracker
 
-from stitching.trackers import ByteTrackTracker, BoTSORTTracker, DeepSORTTracker
+logger = logging.getLogger('video-utils.videos_to_video')
 
 
 class ServiceRunner(dl.BaseServiceRunner):
@@ -42,16 +38,6 @@ class ServiceRunner(dl.BaseServiceRunner):
             item_width=ann.item_width,
             end_time=ann.end_time,
         )
-
-    @staticmethod
-    def create_folder(folder):
-        """
-        creates empty folder
-        :param folder: the path of the folder
-        """
-        if os.path.exists(folder):
-            shutil.rmtree(folder, ignore_errors=True)
-        os.mkdir(folder)
 
     @staticmethod
     def is_items_from_same_split(items):
@@ -79,295 +65,18 @@ class ServiceRunner(dl.BaseServiceRunner):
                 return False
         return True
 
-    # @staticmethod
-    # def merge_by_sub_videos_intervals(writer, input_files, sub_videos_intervals, items):
-    #     """
-    #     merges videos by sub videos intervals
-    #     :param writer: handler of write video
-    #     :param input_files: the sub videos to merge
-    #     :param sub_videos_intervals: the sub videos intervals of the videos
-    #     :param items: the items of the videos
-    #     """
-    #     sub_videos_annotations_data = []
-    #     sub_videos_frames = []
-    #     curr_sub_video_frames = []
-    #     curr_sub_video_annotations = []
-    #     total_frames_count = sub_videos_intervals[-1][1] + 1
-    #     # Loop through each input video file and write its frames to the output video
-    #     for i, input_file in enumerate(input_files):
-    #         item = items[i]
-    #         annotations = item.annotations.list()
-    #         next_interval_start_frame = (
-    #             sub_videos_intervals[i + 1][0] if i < len(sub_videos_intervals) - 1 else total_frames_count
-    #         )
-    #         start_frame, end_frame = sub_videos_intervals[i]
-    #         # Open the input video file
-    #         cap = cv2.VideoCapture(input_file)
-
-    #         for frame_index, j in enumerate(range(start_frame, next_interval_start_frame)):
-    #             frame_annotations = annotations.get_frame(frame_num=frame_index).annotations
-    #             curr_sub_video_annotations.append(
-    #                 [
-    #                     {
-    #                         "top": ann.top,
-    #                         "left": ann.left,
-    #                         "bottom": ann.bottom,
-    #                         "right": ann.right,
-    #                         "label": ann.label,
-    #                         "object_visible": ann.object_visible,
-    #                         "object_id": int(ann.id, 16),
-    #                     }
-    #                     for ann in frame_annotations
-    #                 ]
-    #             )
-    #             ret, frame = cap.read()
-    #             if ret:
-    #                 curr_sub_video_frames.append(frame)
-    #                 writer.write(frame)
-    #             else:
-    #                 break
-
-    #         # TODO : this copy is not needed
-    #         sub_videos_annotations_data.append(curr_sub_video_annotations.copy())
-    #         curr_sub_video_annotations = []
-    #         sub_videos_frames.append(curr_sub_video_frames.copy())
-    #         curr_sub_video_frames = []
-    #         # Release the input video file
-    #         cap.release()
-    #     # Release the VideoWriter object
-    #     writer.release()
-    #     return sub_videos_annotations_data, sub_videos_frames
-
-    @staticmethod
-    def get_iou(bb1, bb2):
-        """
-        Calculate the Intersection over Union (IoU) of two bounding boxes.
-        bb1-2 : list
-            [top, left, bottom, right)
-        """
-        top1, left1, bottom1, right1 = bb1[0], bb1[1], bb1[2], bb1[3]
-        top2, left2, bottom2, right2 = bb2[0], bb2[1], bb2[2], bb2[3]
-
-        x_left = max(left1, left2)
-        y_top = max(top1, top2)
-        x_right = min(right1, right2)
-        y_bottom = min(bottom1, bottom2)
-        if x_right < x_left or y_bottom < y_top:
-            return 0.0
-        intersection_area = (x_right - x_left) * (y_bottom - y_top)
-        bb1_area = (right1 - left1) * (bottom1 - top1)
-        bb2_area = (right2 - left2) * (bottom2 - top2)
-        iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
-        return iou
-
-    @staticmethod
-    def get_bb_from_ann(ann):
-        """
-        get bounding box from annotation
-        :param ann: an annotation
-        :return: the bounding box of the annotation
-        """
-        return [ann["top"], ann["left"], ann["bottom"], ann["right"]]
-
-    @staticmethod
-    def match_annotation_object_id(prev_sub_video_last_frame_annotations, sub_video_annotations):
-        """
-        match the object id between annotation from different frames
-        :param prev_sub_video_last_frame_annotations: the last frame annotations of the prev sub video
-        :param sub_video_annotations: the current sub video annotations
-        """
-        cur_sub_video_first_frame_annotations = sub_video_annotations[0]
-        ann_matches = []
-        best_match = (-1, 0)
-        matched_prev_anns = []
-        for i, current_annotation in enumerate(cur_sub_video_first_frame_annotations):
-            for j, prev_annotation in enumerate(prev_sub_video_last_frame_annotations):
-                if j in matched_prev_anns or prev_annotation["label"] != current_annotation["label"]:
-                    continue
-                iou = ServiceRunner.get_iou(
-                    ServiceRunner.get_bb_from_ann(current_annotation), ServiceRunner.get_bb_from_ann(prev_annotation)
-                )
-                if iou > best_match[1]:
-                    best_match = (j, iou)
-            ann_matches.append([i, best_match[0]])
-            matched_prev_anns.append(best_match[0])
-            best_match = (-1, 0)
-
-        for curr_ann_idx, prev_ann_idx in ann_matches:
-            if prev_ann_idx == -1:
-                continue
-            else:
-                new_object_id = prev_sub_video_last_frame_annotations[prev_ann_idx]["object_id"]
-                object_id_to_replace = cur_sub_video_first_frame_annotations[curr_ann_idx]["object_id"]
-                for frame_annotations in sub_video_annotations:
-                    for annotation in frame_annotations:
-                        if annotation["object_id"] == object_id_to_replace:
-                            annotation["object_id"] = new_object_id
-
-    @staticmethod
-    def upload_annotations(video_item, sub_videos_annotations_data):
-        """
-        uploads the annotations to Dataloop video item
-        :param video_item: the video item
-        :param sub_videos_annotations_data: the annotations data sub video
-        """
-        ServiceRunner.merge_annotations_id(sub_videos_annotations_data)
-        builder = video_item.annotations.builder()
-        frame_index = 0
-        for sub_video_annotations_data in sub_videos_annotations_data:
-            for frame_annotations_data in sub_video_annotations_data:
-                for ann in frame_annotations_data:
-                    builder.add(
-                        annotation_definition=dl.Box(
-                            top=ann["top"],
-                            left=ann["left"],
-                            bottom=ann["bottom"],
-                            right=ann["right"],
-                            label=ann["label"],
-                        ),
-                        object_visible=ann["object_visible"],
-                        frame_num=frame_index,
-                        # need to input the element id to create the connection between frames
-                        object_id=ann["object_id"],
-                    )
-                frame_index += 1
-
-        video_item.annotations.upload(annotations=builder)
-
-    @staticmethod
-    def videos_to_video(item, dql_filter, output_folder):
-        """
-        merges sub videos to one video
-        :param item: an item to trigger this service
-        :param dql_filter: a DQL filter of the sub videos to merge
-        :param output_folder: the remote output folder
-        """
-        dataset = item.dataset
-        local_input_folder = "input_folder" + str(threading.get_native_id())
-        local_output_folder = "output_folder" + str(threading.get_native_id())
-        ServiceRunner.create_folder(local_input_folder)
-        ServiceRunner.create_folder(local_output_folder)
-        filters = dl.Filters(custom_filter=dql_filter)
-        filters.sort_by(field='name')
-        items = dataset.items.get_all_items(filters=filters)
-        if not items or len(items) == 0:
-            print("No videos match to merge")
-            return
-        is_same_split = ServiceRunner.is_items_from_same_split(items)
-        input_files = [item.download(local_path=local_input_folder) for item in items]
-        first_input_file = input_files[0]
-        video_type = os.path.splitext(os.path.basename(first_input_file))[1].replace(".", "")
-
-        fourcc = cv2.VideoWriter_fourcc(*("VP80" if video_type.lower() == "webm" else "mp4v"))
-        cap = cv2.VideoCapture(first_input_file)
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-        cap.release()
-        output_video_path = os.path.join(
-            local_output_folder,
-            f"{items[0].metadata['origin_video_name'].replace(f'.{video_type}', '') + '_' if is_same_split else ''}merge_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{video_type}",
-        )
-
-        # Create a VideoWriter object to write the merged video to a file
-        writer = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
-        if is_same_split:
-            sub_videos_intervals = items[0].metadata["sub_videos_intervals"]
-            sub_videos_annotations_data = ServiceRunner.merge_by_sub_videos_intervals(
-                writer, input_files, sub_videos_intervals, items
-            )
-        else:
-            sub_videos_annotations_data = ServiceRunner.regular_merge(writer, input_files, items)
-        video_item = dataset.items.upload(local_path=output_video_path, remote_path=output_folder)
-        video_item.fps = fps
-        ServiceRunner.upload_annotations(video_item, sub_videos_annotations_data)
-        shutil.rmtree(local_input_folder, ignore_errors=True)
-        shutil.rmtree(local_output_folder, ignore_errors=True)
-
-    @staticmethod
-    def old_match_annotation_object_id_with_tracker(
-        prev_sub_video_last_frames_annotations, sub_video_annotations, prev_frames
-    ):
-        """
-        Match object IDs between sub-videos using ByteTrack tracker
-        :param prev_sub_video_last_frames_annotations: List of annotations from last N frames of previous sub-video
-        :param sub_video_annotations: List of annotations from current sub-video
-        :param prev_frames: List of actual frame images from previous sub-video
-        """
-        if not prev_sub_video_last_frames_annotations or not sub_video_annotations or not prev_frames:
-            return
-
-        # Initialize tracker with default options
-        opts = load_opt()
-        opts.track_buffer = 30  # Keep track of objects for 30 frames
-        opts.track_thresh = 0.5  # Confidence threshold for tracking
-        opts.match_thresh = 0.8  # IoU threshold for matching
-
-        # Initialize tracker without annotations builder
-        tracker = ByteTrackTracker(opts=opts, annotations_builder=None)
-
-        # Process previous frames to initialize tracking
-        for i, (frame_anns, frame) in enumerate(zip(prev_sub_video_last_frames_annotations, prev_frames)):
-            # Update tracker with previous frame
-            tracker.update(frame, i, frame_anns)
-
-        # Process first frame of current sub-video
-        current_frame_anns = sub_video_annotations[0]
-        # Use the last frame from previous sub-video as reference
-        frame = prev_frames[-1]
-
-        # Update tracker with current frame
-        tracker.update(frame, len(prev_sub_video_last_frames_annotations), current_frame_anns)
-
-        # Get tracking results and update object IDs
-        for frame_annotations in sub_video_annotations:
-            for annotation in frame_annotations:
-                # Find matching track ID from tracker's state
-                for track in tracker.tracker.tracked_stracks:
-                    if track.is_activated:
-                        # Calculate IoU between annotation and track
-                        ann_box = [annotation["top"], annotation["left"], annotation["bottom"], annotation["right"]]
-                        track_box = [track.tlbr[0], track.tlbr[1], track.tlbr[2], track.tlbr[3]]
-                        iou = ServiceRunner.get_iou(ann_box, track_box)
-
-                        # If IoU is high enough, update the object ID
-                        if iou > opts.match_thresh:
-                            annotation["object_id"] = track.track_id
-                            break
-
-    ########################################################
-    ########################################################
-
-    def match_annotation_objects_ids(
-        self, prev_sub_video_anns, prev_sub_video_frames, sub_videos_anns_data, sub_videos_frames
-    ):
-
-        # Initialize tracker with default options
-        opts = load_opt()
-        opts.track_buffer = 30  # Keep track of objects for 30 frames
-        opts.track_thresh = 0.5  # Confidence threshold for tracking
-        opts.match_thresh = 0.8  # IoU threshold for matching
-
-        # Initialize tracker without annotations builder
-        tracker = ByteTrackTracker(opts=opts, annotations_builder=None)
-
-        # get last 30 freames of prev sub video
-        for i, (frame_anns, frame) in enumerate(zip(prev_sub_video_anns[-30:], prev_sub_video_frames[-30:])):
-            tracker.update(frame, i, frame_anns)
-
-        # and the firest frame in current sub video
-        tracker.update(sub_videos_frames[0], 30, sub_videos_anns_data[0])
-
-        # match object ids based on tracker results
-        # we need to match annotations from prev sub video last frame to annotations in the current sub video
-        # this will be done by tracker results, so we need a map from
-
     def merge_by_sub_videos_intervals(self, writer, input_files, sub_videos_intervals, items):
         """
-        merges videos by sub videos intervals
-        :param writer: handler of write video
-        :param input_files: the sub videos to merge
-        :param sub_videos_intervals: the sub videos intervals of the videos
-        :param items: the items of the videos
+        Merges multiple sub-videos based on frame intervals.
+
+        Args:
+            writer: VideoWriter object for output video
+            input_files: List of input video file paths
+            sub_videos_intervals: List of frame intervals for each sub-video
+            items: List of Dataloop items corresponding to input videos
+
+        Returns:
+            Tuple containing merged annotations and frames
         """
         merged_video_frames = []
         merged_video_annotations = []
@@ -380,6 +89,13 @@ class ServiceRunner(dl.BaseServiceRunner):
                 sub_videos_intervals[i + 1][0] if i < len(sub_videos_intervals) - 1 else total_frames_count
             )
             start_frame, end_frame = sub_videos_intervals[i]
+            logger.info(
+                f"input file index {i}, "
+                f"start frame {start_frame}, "
+                f"end frame {end_frame}, "
+                f"next interval start frame {next_interval_start_frame}"
+            )
+
             # Open the input video file
             cap = cv2.VideoCapture(input_file)
 
@@ -395,36 +111,20 @@ class ServiceRunner(dl.BaseServiceRunner):
 
             # Release the input video file
             cap.release()
-        # Release the VideoWriter object
-        writer.release()
 
         return merged_video_annotations, merged_video_frames
 
-    def merge_annotations_id(self, sub_videos_annotations_data, sub_videos_frames):
-        """
-        merge the object id between annotation of the sub videos
-        :param sub_videos_annotations_data: the the sub videos annotations data to merge object id
-        """
-        prev_sub_video_last_frame_annotations_data = None
-        prev_sub_video_frames = None
-        for sub_video_annotations_data, sub_video_frames in zip(sub_videos_annotations_data, sub_videos_frames):
-            if sub_video_annotations_data is None or len(sub_video_annotations_data) == 0:
-                continue
-            if prev_sub_video_last_frame_annotations_data is None:
-                prev_sub_video_last_frame_annotations_data = sub_video_annotations_data[-1].copy()
-                prev_sub_video_frames = sub_video_frames
-                continue
-            ServiceRunner.match_annotation_object_id(
-                prev_sub_video_last_frame_annotations_data, sub_video_annotations_data
-            )
-            prev_sub_video_last_frame_annotations_data = sub_video_annotations_data[-1].copy()
-
     def regular_merge(self, writer, input_files, items):
         """
-        merge between sub videos one by one
-        :param writer: handler of write video
-        :param input_files: the sub videos to merge
-        :param items: the items of the videos
+        Merges videos sequentially and returns merged annotations and frames.
+
+        Args:
+            writer: VideoWriter object for output video
+            input_files: List of input video file paths
+            items: List of Dataloop items corresponding to input videos
+
+        Returns:
+            Tuple containing merged annotations and frames
         """
         merged_video_annotations = []
         merged_video_frames = []
@@ -442,14 +142,13 @@ class ServiceRunner(dl.BaseServiceRunner):
                 writer.write(frame)
                 ret, frame = cap.read()
                 frame_index += 1
+            logger.info(f"regular merge input file {i} , number of frames {frame_index}")
             # Release the input video file
             cap.release()
-        # Release the VideoWriter object
-        writer.release()
+
         return merged_video_annotations, merged_video_frames
 
-    # TODO : move this to base class
-    def get_input_files(self, dataset):
+    def get_input_items(self, dataset):
         filters = dl.Filters(field='dir', values=self.input_dir)
         filters.sort_by(field='name')
         items = dataset.items.get_all_items(filters=filters)
@@ -462,13 +161,40 @@ class ServiceRunner(dl.BaseServiceRunner):
     def set_config_params(self, node: dl.PipelineNode):
         self.output_dir = node.metadata['customNodeConfig']['output_dir']
         self.input_dir = node.metadata['customNodeConfig']['input_dir']
+        self.trackerName = node.metadata['customNodeConfig']['tracker']
 
     def upload_annotations(self, video_item, merged_video_annotations, merged_video_frames):
-        tracker = DeepSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
+        if self.trackerName == "ByteTrack":
+            tracker = ByteTrackTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
+        elif self.trackerName == "DeepSORT":
+            tracker = DeepSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
+        elif self.trackerName == "BoTSORT":
+            tracker = BoTSORTTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
+        else:
+            raise ValueError(f"Invalid tracker: {self.trackerName}")
         for i, (frame, frame_annotations) in enumerate(zip(merged_video_frames, merged_video_annotations)):
-            print(f"-HHH- frame {i} top : {frame_annotations[0].top}")
             tracker.update(frame, i, frame_annotations)
         video_item.annotations.upload(annotations=tracker.annotations_builder)
+
+    def get_video_writer(self, first_input_file, first_item, is_same_split):
+        video_type = os.path.splitext(os.path.basename(first_input_file))[1].replace(".", "")
+        logger.info(f"video_type: {video_type}")
+        fourcc = cv2.VideoWriter_fourcc(*("VP80" if video_type.lower() == "webm" else "mp4v"))
+        cap = cv2.VideoCapture(first_input_file)
+        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        logger.info(f"fps: {fps}")
+        frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        logger.info(f"frame_size: {frame_size}")
+        cap.release()
+        output_video_path = os.path.join(
+            self.local_output_folder,
+            f"{first_item.metadata['origin_video_name'].replace(f'.{video_type}', '') + '_' if is_same_split else ''}merge_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{video_type}",
+        )
+        logger.info(f"output_video_path: {output_video_path}")
+
+        # Create a VideoWriter object to write the merged video to a file
+        writer = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
+        return writer, output_video_path, fps
 
     def videos_to_video(self, item: dl.Item, context: dl.Context):
 
@@ -477,40 +203,35 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.local_input_folder = tempfile.mkdtemp(suffix="_input")
         self.local_output_folder = tempfile.mkdtemp(suffix="_output")
 
-        items = self.get_input_files(item.dataset)
+        items = self.get_input_items(item.dataset)
         if not items or len(items) == 0:
-            print("No videos match to merge")
+            logger.error("No videos match to merge")
             return
+
         is_same_split = ServiceRunner.is_items_from_same_split(items)
+        logger.info(f"is_same_split: {is_same_split}")
         input_files = [item.download(local_path=self.local_input_folder) for item in items]
-        first_input_file = input_files[0]
-        video_type = os.path.splitext(os.path.basename(first_input_file))[1].replace(".", "")
-
-        fourcc = cv2.VideoWriter_fourcc(*("VP80" if video_type.lower() == "webm" else "mp4v"))
-        cap = cv2.VideoCapture(first_input_file)
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-        cap.release()
-        output_video_path = os.path.join(
-            self.local_output_folder,
-            f"{items[0].metadata['origin_video_name'].replace(f'.{video_type}', '') + '_' if is_same_split else ''}merge_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{video_type}",
-        )
-
+        logger.info(f"input_files length: {len(input_files)}")
         # Create a VideoWriter object to write the merged video to a file
-        writer = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
+        writer, output_video_path, fps = self.get_video_writer(input_files[0], items[0], is_same_split)
+
         if is_same_split:
+            logger.info("merge by sub videos intervals")
             sub_videos_intervals = items[0].metadata["sub_videos_intervals"]
-            print(f"-HHH- merge by sub videos intervals {sub_videos_intervals}")
             merged_video_annotations, merged_video_frames = self.merge_by_sub_videos_intervals(
                 writer, input_files, sub_videos_intervals, items
             )
         else:
-            print("regular merge")
+            logger.info("regular merge")
             merged_video_annotations, merged_video_frames = self.regular_merge(writer, input_files, items)
+
+        # Release the VideoWriter object
+        writer.release()
 
         video_item = item.dataset.items.upload(local_path=output_video_path, remote_path=self.output_dir)
         video_item.fps = fps
         video_item.update()
+        logger.info("uploading annotations to video")
         self.upload_annotations(video_item, merged_video_annotations, merged_video_frames)
 
 
@@ -526,8 +247,9 @@ if __name__ == "__main__":
     context.pipeline_id = "682069122afb795bc3c41d59"
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
-        "output_dir": "/videos_to_video_2805_25",
+        "output_dir": "/videos_to_video_2805_28",
         "input_dir": "/merge_videos_testcase",
+        "tracker": "ByteTrack",
     }
 
     # export PYTHONPATH=/app/BoT_SORT
