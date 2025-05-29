@@ -1,23 +1,26 @@
 import datetime
 import os
-import shutil
-import cv2
-import dtlpy as dl
-import numpy as np
-from trackings.utils import load_opt
 import tempfile
-import sys
 import copy
-from dotenv import load_dotenv
 import logging
 
+import cv2
+import dtlpy as dl
+from dotenv import load_dotenv
+
+from trackings.utils import load_opt
 from trackers import ByteTrackTracker, BoTSORTTracker, DeepSORTTracker
 
 logger = logging.getLogger('video-utils.videos_to_video')
 
 
 class ServiceRunner(dl.BaseServiceRunner):
-    def __init__(self): ...
+    def __init__(self):
+        self.output_dir = None
+        self.input_dir = None
+        self.trackerName = None
+        self.local_input_folder = None
+        self.local_output_folder = None
 
     @staticmethod
     def clone_annotation(ann: dl.Annotation):
@@ -42,15 +45,16 @@ class ServiceRunner(dl.BaseServiceRunner):
     @staticmethod
     def is_items_from_same_split(items):
         """
-        checks if all of the items are from the same video
-        :param items: the items to check
-        :return: true if all of the items are from the same video, false otherwise
+        Check if all items are from the same video split.
+
+        Args:
+            items: List of Dataloop items to check
+
+        Returns:
+            bool: True if all items are from same split, False otherwise
         """
         if not all(
-            [
-                all(key in item.metadata for key in ("origin_video_name", "sub_videos_intervals", "time"))
-                for item in items
-            ]
+            key in item.metadata for item in items for key in ('origin_video_name', 'sub_videos_intervals', 'time')
         ):
             return False
         original_name = items[0].metadata["origin_video_name"]
@@ -82,8 +86,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         merged_video_annotations = []
         total_frames_count = sub_videos_intervals[-1][1] + 1
         # Loop through each input video file and write its frames to the output video
-        for i, input_file in enumerate(input_files):
-            item = items[i]
+        for i, (input_file, item) in enumerate(zip(input_files, items)):
             annotations = item.annotations.list()
             next_interval_start_frame = (
                 sub_videos_intervals[i + 1][0] if i < len(sub_videos_intervals) - 1 else total_frames_count
@@ -129,8 +132,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         merged_video_annotations = []
         merged_video_frames = []
         # Loop through each input video file and write its frames to the output video
-        for i, input_file in enumerate(input_files):
-            item = items[i]
+        for i, (input_file, item) in enumerate(zip(input_files, items)):
             annotations = item.annotations.list()
             cap = cv2.VideoCapture(input_file)
             frame_index = 0
@@ -149,6 +151,15 @@ class ServiceRunner(dl.BaseServiceRunner):
         return merged_video_annotations, merged_video_frames
 
     def get_input_items(self, dataset):
+        """
+        Gets all items from dataset matching input directory path.
+
+        Args:
+            dataset: Dataloop dataset to get items from
+
+        Returns:
+            list: List of dataset items matching input path
+        """
         filters = dl.Filters(field='dir', values=self.input_dir)
         filters.sort_by(field='name')
         items = dataset.items.get_all_items(filters=filters)
@@ -159,11 +170,25 @@ class ServiceRunner(dl.BaseServiceRunner):
         return items
 
     def set_config_params(self, node: dl.PipelineNode):
+        """
+        Sets configuration parameters from pipeline node metadata.
+
+        Args:
+            node: Pipeline node containing configuration
+        """
         self.output_dir = node.metadata['customNodeConfig']['output_dir']
         self.input_dir = node.metadata['customNodeConfig']['input_dir']
         self.trackerName = node.metadata['customNodeConfig']['tracker']
 
     def upload_annotations(self, video_item, merged_video_annotations, merged_video_frames):
+        """
+        Uploads annotations to video item using specified tracker.
+
+        Args:
+            video_item: Dataloop video item to upload annotations to
+            merged_video_annotations: List of annotations per frame
+            merged_video_frames: List of video frames
+        """
         if self.trackerName == "ByteTrack":
             tracker = ByteTrackTracker(opts=load_opt(), annotations_builder=video_item.annotations.builder())
         elif self.trackerName == "DeepSORT":
@@ -177,6 +202,17 @@ class ServiceRunner(dl.BaseServiceRunner):
         video_item.annotations.upload(annotations=tracker.annotations_builder)
 
     def get_video_writer(self, first_input_file, first_item, is_same_split):
+        """
+        Creates and configures video writer based on first input video.
+
+        Args:
+            first_input_file: Path to first input video file
+            first_item: First Dataloop video item
+            is_same_split: Whether videos are from same split
+
+        Returns:
+            tuple: VideoWriter object, output path, and fps
+        """
         video_type = os.path.splitext(os.path.basename(first_input_file))[1].replace(".", "")
         logger.info(f"video_type: {video_type}")
         fourcc = cv2.VideoWriter_fourcc(*("VP80" if video_type.lower() == "webm" else "mp4v"))
@@ -197,7 +233,16 @@ class ServiceRunner(dl.BaseServiceRunner):
         return writer, output_video_path, fps
 
     def videos_to_video(self, item: dl.Item, context: dl.Context):
+        """
+        Merges multiple videos into a single video with optional object tracking.
 
+        Args:
+            item (dl.Item): The Dataloop item to process
+            context (dl.Context): Pipeline context containing configuration
+
+        Returns:
+            None
+        """
         self.set_config_params(context.node)
 
         self.local_input_folder = tempfile.mkdtemp(suffix="_input")
@@ -247,7 +292,7 @@ if __name__ == "__main__":
     context.pipeline_id = "682069122afb795bc3c41d59"
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
-        "output_dir": "/videos_to_video_2805_28",
+        "output_dir": "/videos_to_video_2805_29",
         "input_dir": "/merge_videos_testcase",
         "tracker": "ByteTrack",
     }
