@@ -6,18 +6,17 @@ import torch
 import dtlpy as dl
 from trackings.utils import plot_one_box, load_opt
 
-# Add ByteTrack to Python path
-byte_track_path = os.path.join(os.path.dirname(__file__), 'ByteTrack')
-if byte_track_path not in sys.path:
-    sys.path.insert(0, byte_track_path)
+# # Add ByteTrack to Python path
+# byte_track_path = os.path.join(os.path.dirname(__file__), 'ByteTrack')
+# if byte_track_path not in sys.path:
+#     sys.path.insert(0, byte_track_path)
+# from yolox.tracker.byte_tracker import BYTETracker
 from yolox.tracker.byte_tracker import BYTETracker
 
 # Add BoT_SORT to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'BoT_SORT'))
 from tracker.mc_bot_sort import BoTSORT
 
-# Add DeepSORT to Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'deep_sort_pytorch'))
 from deep_sort.deep_sort import DeepSort
 
 
@@ -168,9 +167,7 @@ class DeepSORTTracker(BaseTracker):
     def __init__(self, opts, annotations_builder):
         super().__init__(opts.min_box_area, annotations_builder)
         self.opts = opts
-        model_path = os.path.join(
-            os.path.dirname(__file__), 'deep_sort_pytorch', 'deep_sort', 'deep', 'checkpoint', 'ckpt.t7'
-        )
+        model_path = os.path.join(os.path.dirname(__file__), 'ckpt.t7')
         self.tracker = DeepSort(
             model_path=model_path,
             max_dist=0.2,
