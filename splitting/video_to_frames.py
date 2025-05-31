@@ -262,10 +262,10 @@ if __name__ == "__main__":
     # }
 
     context.node.metadata["customNodeConfig"] = {
-        "split_type": "structural_similarity_sampling",
+        "split_type": "embedding_similarity_sampling",
         "window_size": 9,
         "threshold": 0.5,
         "min_interval": 0.5,
-        "output_dir": "/Demo_2905_structural_similarity_sampling",
+        "output_dir": "/tmp_embedding_similarity_sampling",
     }
     runner.video_to_frames(item=dl.items.get(item_id="682487673ec9c710b662097d"), context=context)

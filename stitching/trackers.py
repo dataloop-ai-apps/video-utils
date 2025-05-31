@@ -11,13 +11,13 @@ from trackings.utils import plot_one_box, load_opt
 # if byte_track_path not in sys.path:
 #     sys.path.insert(0, byte_track_path)
 # from yolox.tracker.byte_tracker import BYTETracker
-from yolox.tracker.byte_tracker import BYTETracker
 
 # Add BoT_SORT to Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'BoT_SORT'))
 from tracker.mc_bot_sort import BoTSORT
 
 from deep_sort.deep_sort import DeepSort
+
+from yolox.tracker.byte_tracker import BYTETracker
 
 
 class BaseTracker:

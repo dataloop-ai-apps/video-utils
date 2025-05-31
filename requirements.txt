@@ -70,3 +70,4 @@ zipp==3.1.0
 mmdet~=3.0.0
 setuptools~=56.0.0
 seaborn
+tensorflow

@@ -138,7 +138,7 @@ if __name__ == "__main__":
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
         "fps": 20,
-        "output_dir": "/tmp_stitching_frames_to_video_22",
+        "output_dir": "/tmp_stitching_frames_to_video_deep_22",
         "input_dir": "/split_5_sec_to_one_frame",
         "output_video_type": "webm",
         "tracker": "DeepSORT",
