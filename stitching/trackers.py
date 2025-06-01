@@ -167,7 +167,17 @@ class DeepSORTTracker(BaseTracker):
     def __init__(self, opts, annotations_builder):
         super().__init__(opts.min_box_area, annotations_builder)
         self.opts = opts
-        model_path = os.path.join(os.path.dirname(__file__), 'ckpt.t7')
+        model_path = os.path.join(
+            os.path.join(
+                os.path.dirname(os.path.dirname(__file__)),
+                'trackers',
+                'deep_sort_pytorch',
+                'deep_sort',
+                'deep',
+                'checkpoint',
+                'ckpt.t7',
+            )
+        )
         self.tracker = DeepSort(
             model_path=model_path,
             max_dist=0.2,
