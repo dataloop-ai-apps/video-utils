@@ -1,16 +1,8 @@
-import numpy as np
-import cv2
 import os
-import sys
+import numpy as np
 import torch
+import argparse
 import dtlpy as dl
-from trackings.utils import plot_one_box, load_opt
-
-# # Add ByteTrack to Python path
-# byte_track_path = os.path.join(os.path.dirname(__file__), 'ByteTrack')
-# if byte_track_path not in sys.path:
-#     sys.path.insert(0, byte_track_path)
-# from yolox.tracker.byte_tracker import BYTETracker
 
 # Add BoT_SORT to Python path
 from tracker.mc_bot_sort import BoTSORT
@@ -21,7 +13,32 @@ from yolox.tracker.byte_tracker import BYTETracker
 
 
 class BaseTracker:
+    """Base class for object tracking implementations.
+
+    This class provides common functionality for different tracking algorithms,
+    including annotation handling and box size filtering.
+
+    Args:
+        min_box_area (float): Minimum area threshold for bounding boxes. Boxes smaller
+            than this will be filtered out.
+        annotations_builder (dl.AnnotationBuilder, optional): Dataloop annotation builder
+            instance for creating annotations. Defaults to None.
+
+    Attributes:
+        min_box_area (float): Minimum box area threshold
+        label_to_id_map (dict): Maps label strings to numeric IDs
+        id_to_label_map (dict): Maps numeric IDs back to label strings
+        annotations_builder (dl.AnnotationBuilder): Builder for creating annotations
+        annotations_list (list): List to store annotation dictionaries
+    """
+
     def __init__(self, min_box_area, annotations_builder=None):
+        """Initialize base tracker with minimum box area and optional annotation builder.
+
+        Args:
+            min_box_area (float): Minimum area threshold for bounding boxes
+            annotations_builder (dl.AnnotationBuilder, optional): Dataloop annotation builder
+        """
         self.min_box_area = min_box_area
         self.label_to_id_map = {}
         self.id_to_label_map = {}
@@ -31,6 +48,19 @@ class BaseTracker:
     def update(self, frame, fn, frame_annotations): ...
 
     def add_annotation(self, box_size, fn, label_id, top, left, bottom, right, object_id, label=None):
+        """Add annotation if box size exceeds minimum area threshold.
+
+        Args:
+            box_size (float): Area of bounding box
+            fn (int): Frame number
+            label_id (int): Class label ID
+            top (float): Top coordinate
+            left (float): Left coordinate
+            bottom (float): Bottom coordinate
+            right (float): Right coordinate
+            object_id (int): Unique object ID
+            label (str, optional): Class label string
+        """
         if box_size <= self.min_box_area:
             return
 
@@ -67,6 +97,15 @@ class BaseTracker:
 class ByteTrackTracker(BaseTracker):
     @staticmethod
     def iou(boxA, boxB):
+        """Calculate intersection over union between two bounding boxes.
+
+        Args:
+            boxA: First box coordinates (top, left, bottom, right)
+            boxB: Second box coordinates (top, left, bottom, right)
+
+        Returns:
+            float: IoU score between 0 and 1
+        """
         # box: (l, t, r, b)
         xA = max(boxA[0], boxB[0])
         yA = max(boxA[1], boxB[1])
@@ -78,15 +117,22 @@ class ByteTrackTracker(BaseTracker):
         iou = interArea / float(boxAArea + boxBArea - interArea + 1e-6)
         return iou
 
-    def __init__(self, opts, annotations_builder):
-        super().__init__(opts.min_box_area, annotations_builder)
-        self.opts = opts
-        self.opts.track_thresh = 0.5
-        self.opts.track_buffer = 30
-        self.opts.match_thresh = 0.8
-        self.tracker = BYTETracker(args=self.opts, frame_rate=20.0)
+    def __init__(self, annotations_builder, frame_rate):
+        super().__init__(annotations_builder)
+        opts = argparse.Namespace(track_thresh=0.5, track_buffer=30, match_thresh=0.8, mot20=False)
+        self.tracker = BYTETracker(args=opts, frame_rate=frame_rate)
 
     def update(self, frame, fn, frame_annotations):
+        """Update tracker with new frame and annotations.
+
+        Args:
+            frame: Video frame
+            fn: Frame number
+            frame_annotations: List of annotations for current frame
+
+        Returns:
+            AnnotationBuilder: Updated annotations
+        """
         tracker_annotations = np.zeros((len(frame_annotations), 5))
         # Store input boxes for later matching
         input_boxes = []  # (left, top, right, bottom, label, ann object)
@@ -113,7 +159,9 @@ class ByteTrackTracker(BaseTracker):
             tlbr = t.tlbr  # (left, top, right, bottom)
             tid = t.track_id
 
-            # Find best match in input_boxes
+            # Find best match in input_boxes by calculating IoU (Intersection over Union)
+            # We use IoU to match tracked boxes with original input boxes to preserve the original labels,
+            # since ByteTracker doesn't maintain label information during tracking
             best_iou = 0
             best_label = None
             for t, l, b, r, label, ann in input_boxes:
@@ -128,14 +176,29 @@ class ByteTrackTracker(BaseTracker):
 
 
 class BoTSORTTracker(BaseTracker):
-    def __init__(self, opts, annotations_builder):
-        super().__init__(opts.min_box_area, annotations_builder)
-        self.opts = opts
-        self.tracker = BoTSORT(self.opts, frame_rate=20.0)
-        self.tracker.track_high_thresh = 0.11
-        self.tracker.args.track_high_thresh = 0.11
-        self.tracker.new_track_thresh = 0.2
-        self.tracker.args.new_track_thresh = 0.2
+    def __init__(self, annotations_builder, frame_rate):
+        super().__init__(annotations_builder)
+        opts = argparse.Namespace(
+            track_high_thresh=0.11,
+            track_low_thresh=0.1,
+            new_track_thresh=0.2,
+            conf_thres=0.09,
+            iou_thres=0.7,
+            agnostic_nms=True,
+            name='exp',
+            track_thresh=0.6,
+            track_buffer=30,
+            match_thresh=0.8,
+            aspect_ratio_thresh=1.6,
+            min_box_area=10,
+            mot20=True,
+            cmc_method="sparseOptFlow",
+            ablation=False,
+            with_reid=False,
+            proximity_thresh=0.5,
+            appearance_thresh=0.25,
+        )
+        self.tracker = BoTSORT(opts, frame_rate=frame_rate)
 
     def update(self, frame, fn, frame_annotations):
         tracker_annotations = np.zeros((len(frame_annotations), 6))
@@ -164,9 +227,8 @@ class BoTSORTTracker(BaseTracker):
 
 
 class DeepSORTTracker(BaseTracker):
-    def __init__(self, opts, annotations_builder):
-        super().__init__(opts.min_box_area, annotations_builder)
-        self.opts = opts
+    def __init__(self, annotations_builder):
+        super().__init__(annotations_builder)
         model_path = os.path.join(
             os.path.join(
                 os.path.dirname(os.path.dirname(__file__)),
@@ -178,17 +240,7 @@ class DeepSORTTracker(BaseTracker):
                 'ckpt.t7',
             )
         )
-        self.tracker = DeepSort(
-            model_path=model_path,
-            max_dist=0.2,
-            min_confidence=0.5,
-            nms_max_overlap=0.5,
-            max_iou_distance=0.7,
-            max_age=70,
-            n_init=3,
-            nn_budget=100,
-            use_cuda=opts.use_cuda if hasattr(opts, 'use_cuda') else True,
-        )
+        self.tracker = DeepSort(model_path=model_path, use_cuda=torch.cuda.is_available())
 
     def update(self, frame, fn, frame_annotations):
         dets = []

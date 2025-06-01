@@ -8,8 +8,7 @@ import cv2
 import dtlpy as dl
 import numpy as np
 from dotenv import load_dotenv
-from trackings.utils import load_opt
-from trackers import ByteTrackTracker, BoTSORTTracker, DeepSORTTracker
+from trackers.trackers_adapters import ByteTrackTracker, BoTSORTTracker, DeepSORTTracker
 
 logger = logging.getLogger('video-utils.frames_to_vid')
 
@@ -112,11 +111,11 @@ class ServiceRunner(dl.BaseServiceRunner):
         video_item = self.stitch_and_upload(item.dataset, cv_frames)
         builder = video_item.annotations.builder()
         if self.trackerName == "ByteTrack":
-            self.tracker = ByteTrackTracker(opts=load_opt(), annotations_builder=builder)
+            self.tracker = ByteTrackTracker(annotations_builder=builder, frame_rate=self.fps)
         elif self.trackerName == "DeepSORT":
-            self.tracker = DeepSORTTracker(opts=load_opt(), annotations_builder=builder)
+            self.tracker = DeepSORTTracker(annotations_builder=builder)
         elif self.trackerName == "BoTSORT":
-            self.tracker = BoTSORTTracker(opts=load_opt(), annotations_builder=builder)
+            self.tracker = BoTSORTTracker(annotations_builder=builder, frame_rate=self.fps)
         logger.info("Tracking frames")
         for i, (frame_i, item_i) in enumerate(zip(cv_frames, items)):
             frame_annotations = item_i.annotations.list().annotations
