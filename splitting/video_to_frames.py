@@ -25,6 +25,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.threshold = None
         self.min_interval = None
         self.window_size = None
+        self.temp_dir = None
 
     def get_embedding(self, frame: np.ndarray) -> np.ndarray:
         """
@@ -177,7 +178,6 @@ class ServiceRunner(dl.BaseServiceRunner):
             item: Source video item
             frames_list: List of frame indices to extract
             cap: OpenCV video capture object
-            temp_dir: Temporary directory for frame storage
         """
         if len(frames_list) == 0:
             return
@@ -185,33 +185,19 @@ class ServiceRunner(dl.BaseServiceRunner):
         item_dataset = item.dataset
         annotations = item.annotations.list()
         # TODO : check if using batch upload will reduce upload time.
-
-        frames_dir = os.path.join(self.temp_dir, "frames")
-        os.makedirs(frames_dir, exist_ok=True)
-        print(f"-HHH- frames_dir: {frames_dir}")
         for frame_idx in frames_list:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             success, frame = cap.read()
             if not success:
                 break
             frame_path = os.path.join(
-                frames_dir,
+                self.temp_dir,
                 f"{os.path.splitext(os.path.basename(item.filename))[0]}_{str(frame_idx).zfill(num_digits)}.jpg",
             )
             cv2.imwrite(frame_path, frame)
-
-        print("-HHH_ start upload")
-        # batch upload
-        frames_items_list = sorted(
-            list(item_dataset.items.upload(local_path=frames_dir, remote_path=self.dl_output_folder)),
-            key=lambda x: x.name,
-        )
-        print("-HHH_ end upload")
-
-        if annotations:
-            for frame_item, frame_idx in zip(frames_items_list, frames_list):
+            frame_item = item_dataset.items.upload(local_path=frame_path, remote_path=self.dl_output_folder)
+            if annotations:
                 frame_annotation = annotations.get_frame(frame_num=frame_idx)
-                print(f"-HHH- frame_annotation: {frame_idx}")
                 builder = frame_item.annotations.builder()
                 for ann in frame_annotation.annotations:
                     if ann.object_visible:
@@ -220,7 +206,6 @@ class ServiceRunner(dl.BaseServiceRunner):
                                 top=ann.top, left=ann.left, bottom=ann.bottom, right=ann.right, label=ann.label
                             )
                         )
-                print(f"-HHH- upload annotations")
                 frame_item.annotations.upload(builder)
 
     def video_to_frames(self, item: dl.Item, context: dl.Context) -> None:
@@ -287,7 +272,7 @@ if __name__ == "__main__":
     context.node.metadata["customNodeConfig"] = {
         "split_type": "frames_interval",
         "splitter_arg": 1,
-        "output_dir": "/try_batch_upload_2",
+        "output_dir": "/try_video_to_frames_0206",
     }
 
     # context.node.metadata["customNodeConfig"] = {
