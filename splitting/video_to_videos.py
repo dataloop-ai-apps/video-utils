@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import tempfile
+from typing import List, Tuple, Dict, Union, Any
 
 import cv2
 import dtlpy as dl
@@ -10,9 +11,22 @@ logger = logging.getLogger('video-utils.video_to_videos')
 
 
 class ServiceRunner(dl.BaseServiceRunner):
-    def __init__(self): ...
+    def __init__(self):
+        self.input_base_name = None
+        self.video_type = None
+        self.fourcc = None
+        self.fps = None
+        self.frame_size = None
+        self.total_frames = None
+        self.max_fc_len = None
+        self.split_type = None
+        self.dl_output_folder = None
+        self.splitter_arg = None
+        self.n_overlap = None
+        self.local_input_folder = None
+        self.local_output_folder = None
 
-    def get_sub_videos_intervals_by_num_frames(self, num_frames_per_split):
+    def get_sub_videos_intervals_by_num_frames(self, num_frames_per_split: Union[int, List[int]]) -> List[List[int]]:
         """
         Compute sub video intervals based on number of frames per split.
 
@@ -48,7 +62,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             sub_videos_intervals.append([start_frame, self.total_frames - 1])
         return sub_videos_intervals
 
-    def get_sub_videos_intervals_by_num_splits(self, num_splits):
+    def get_sub_videos_intervals_by_num_splits(self, num_splits: int) -> List[List[int]]:
         """
         Compute sub video intervals based on desired number of splits.
 
@@ -57,9 +71,6 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         Returns:
             list: List of [start_frame, end_frame] intervals for each sub video.
-
-        Raises:
-            AssertionError: If num_splits <= 0 or invalid overlap
         """
         assert num_splits > 0, "number of splits must be greater then 0"
         assert (
@@ -81,7 +92,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             extra_frame = False
         return sub_videos_intervals
 
-    def get_sub_videos_intervals_by_length(self, out_length):
+    def get_sub_videos_intervals_by_length(self, out_length: Union[float, List[float]]) -> List[List[int]]:
         """
         Compute sub video intervals based on desired output length in seconds.
 
@@ -101,20 +112,20 @@ class ServiceRunner(dl.BaseServiceRunner):
             num_frames_per_split = int(out_length * self.fps)
         return self.get_sub_videos_intervals_by_num_frames(num_frames_per_split)
 
-    def set_config_params(self, node: dl.PipelineNode):
+    def set_config_params(self, node: dl.PipelineNode) -> None:
         """
         Set configuration parameters from pipeline node metadata.
 
         Args:
             node (dl.PipelineNode): Pipeline node containing configuration
         """
-        logger.info(f"node custromg config: {node.metadata['customNodeConfig']}")
+        logger.info(f"node custom config: {node.metadata['customNodeConfig']}")
         self.split_type = node.metadata['customNodeConfig']['split_type']
         self.dl_output_folder = node.metadata['customNodeConfig']['output_dir']
         self.splitter_arg = node.metadata['customNodeConfig']['splitter_arg']
         self.n_overlap = node.metadata['customNodeConfig']['n_overlap']
 
-    def initialize_video_params(self, cap: cv2.VideoCapture, input_video: str):
+    def initialize_video_params(self, cap: cv2.VideoCapture, input_video: str) -> None:
         """
         Initialize video parameters from OpenCV capture object.
 
@@ -123,23 +134,24 @@ class ServiceRunner(dl.BaseServiceRunner):
             input_video (str): Path to input video file
         """
         self.input_base_name = os.path.splitext(os.path.basename(input_video))[0]
-        logger.info(f"input_base_name: {self.input_base_name}")
         self.video_type = os.path.splitext(os.path.basename(input_video))[1].replace(".", "")
-        logger.info(f"video_type: {self.video_type}")
         # Use appropriate codec based on video type
         self.fourcc = cv2.VideoWriter_fourcc(*("VP80" if self.video_type.lower() == "webm" else "mp4v"))
-        logger.info(f"fourcc: {self.fourcc}")
         self.fps = int(cap.get(cv2.CAP_PROP_FPS))
-        logger.info(f"fps: {self.fps}")
         self.frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-        logger.info(f"frame_size: {self.frame_size}")
         # Get the total number of frames in the input video
         self.total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        logger.info(f"total_frames: {self.total_frames}")
         self.max_fc_len = len(str(self.total_frames))
-        logger.info(f"max_fc_len: {self.max_fc_len}")
 
-    def process_video_split(self, cap, annotations, start_frame, end_frame, i):
+        logger.info(
+            f"Video params initialized: input_base_name={self.input_base_name}, video_type={self.video_type}, "
+            f"fourcc={self.fourcc}, fps={self.fps}, frame_size={self.frame_size}, "
+            f"total_frames={self.total_frames}, max_fc_len={self.max_fc_len}"
+        )
+
+    def process_video_split(
+        self, cap: cv2.VideoCapture, annotations: Any, start_frame: int, end_frame: int, i: int
+    ) -> Tuple[str, List[List[Any]]]:
         """
         Process a single video split by writing frames to output and collecting annotations.
 
@@ -184,7 +196,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         writer.release()
         return sub_video_name, sub_video_annotations
 
-    def upload_sub_videos_and_annotations(self, item, sub_videos_annotations_info, sub_videos_intervals):
+    def upload_sub_videos_and_annotations(
+        self,
+        item: dl.Item,
+        sub_videos_annotations_info: Dict[str, List[List[Any]]],
+        sub_videos_intervals: List[List[int]],
+    ) -> None:
         """
         Upload sub videos and their annotations to the platform.
 
@@ -218,16 +235,14 @@ class ServiceRunner(dl.BaseServiceRunner):
                             label=ann["label"],
                         ),
                         object_visible=ann["object_visible"],
-                        # set the frame for the annotation
                         frame_num=frame_index,
-                        # need to input the element id to create the connection between frames
                         object_id=ann["object_id"],
                     )
 
             # Upload the annotations to platform
             sub_video_item.annotations.upload(annotations=builder)
 
-    def video_to_videos(self, item: dl.Item, context: dl.Context):
+    def video_to_videos(self, item: dl.Item, context: dl.Context) -> None:
         """
         Split video into multiple sub-videos based on specified split type and parameters.
 
@@ -236,42 +251,53 @@ class ServiceRunner(dl.BaseServiceRunner):
             context (dl.Context): Node execution context
         """
         logger.info('Running service Video To Videos')
+        cap = None
 
-        self.set_config_params(node=context.node)
+        try:
+            self.set_config_params(node=context.node)
 
-        self.local_input_folder = tempfile.mkdtemp(suffix="_input")
-        self.local_output_folder = tempfile.mkdtemp(suffix="_output")
+            self.local_input_folder = tempfile.mkdtemp(suffix="_input")
+            self.local_output_folder = tempfile.mkdtemp(suffix="_output")
 
-        logger.info(f"Downloading video to {self.local_input_folder}")
-        input_video = item.download(local_path=self.local_input_folder)
-        cap = cv2.VideoCapture(input_video)
-        self.initialize_video_params(cap, input_video)
+            logger.info(f"Downloading video to {self.local_input_folder}")
+            input_video = item.download(local_path=self.local_input_folder)
 
-        logger.info(f"split type: {self.split_type}")
-        sub_videos_intervals = []
-        if self.split_type == "num_frames":
-            sub_videos_intervals = self.get_sub_videos_intervals_by_num_frames(self.splitter_arg)
-        elif self.split_type == "num_splits":
-            sub_videos_intervals = self.get_sub_videos_intervals_by_num_splits(self.splitter_arg)
-        else:  # split_type == out_length
-            sub_videos_intervals = self.get_sub_videos_intervals_by_length(self.splitter_arg)
+            cap = cv2.VideoCapture(input_video)
+            if not cap.isOpened():
+                raise ValueError(f"Failed to open video file: {input_video}")
 
-        logger.info(f"sub_videos_intervals: {sub_videos_intervals}")
+            self.initialize_video_params(cap, input_video)
 
-        # Process each video split
-        annotations = item.annotations.list()
-        sub_videos_annotations_info = {}
-        for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
-            sub_video_name, sub_video_annotations = self.process_video_split(
-                cap, annotations, start_frame, end_frame, i
-            )
-            sub_videos_annotations_info[sub_video_name] = sub_video_annotations
+            logger.info(f"split type: {self.split_type}")
+            sub_videos_intervals = []
+            if self.split_type == "num_frames":
+                sub_videos_intervals = self.get_sub_videos_intervals_by_num_frames(self.splitter_arg)
+            elif self.split_type == "num_splits":
+                sub_videos_intervals = self.get_sub_videos_intervals_by_num_splits(self.splitter_arg)
+            else:  # split_type == out_length
+                sub_videos_intervals = self.get_sub_videos_intervals_by_length(self.splitter_arg)
 
-        # Release the input video file
-        cap.release()
+            logger.info(f"sub_videos_intervals: {sub_videos_intervals}")
 
-        logger.info(f"Uploading sub videos and annotations to {self.dl_output_folder}")
-        self.upload_sub_videos_and_annotations(item, sub_videos_annotations_info, sub_videos_intervals)
+            # Process each video split
+            annotations = item.annotations.list()
+            sub_videos_annotations_info = {}
+            for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
+                sub_video_name, sub_video_annotations = self.process_video_split(
+                    cap=cap, annotations=annotations, start_frame=start_frame, end_frame=end_frame, i=i
+                )
+                sub_videos_annotations_info[sub_video_name] = sub_video_annotations
+
+            logger.info(f"Uploading sub videos and annotations to {self.dl_output_folder}")
+            self.upload_sub_videos_and_annotations(item, sub_videos_annotations_info, sub_videos_intervals)
+
+        except Exception as e:
+            logger.error(f"Error processing video: {str(e)}")
+            raise
+        finally:
+            if cap is not None:
+                cap.release()
+                logger.info("Released video capture resources")
 
 
 if __name__ == "__main__":
@@ -293,8 +319,8 @@ if __name__ == "__main__":
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
         "split_type": "out_length",
-        "splitter_arg": 2.5,
-        "output_dir": "/2.5_sec_videos_2",
+        "splitter_arg": 3,
+        "output_dir": "/3_sec_videos_2",
         "n_overlap": 0,
     }
 
