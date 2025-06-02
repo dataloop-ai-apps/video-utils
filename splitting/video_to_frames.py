@@ -1,11 +1,11 @@
 import logging
 import os
 import tempfile
+from typing import List
 
 import cv2
 import dtlpy as dl
 from dotenv import load_dotenv
-import os
 from skimage.metrics import structural_similarity
 from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.applications.resnet50 import preprocess_input
@@ -26,7 +26,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.min_interval = None
         self.window_size = None
 
-    def get_embedding(self, frame):
+    def get_embedding(self, frame: np.ndarray) -> np.ndarray:
         """
         Get embedding vector for a frame using ResNet50
 
@@ -44,7 +44,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         # Get the embedding
         return self.embedder.predict(img).flatten()
 
-    def embedding_similarity_sampling(self, cap, fps):
+    def embedding_similarity_sampling(self, cap: cv2.VideoCapture, fps: int) -> List[int]:
         """
         Sample frames based on embedding similarity using cosine distance.
 
@@ -90,7 +90,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         return frames_list
 
-    def structural_similarity_sampling(self, cap, fps):
+    def structural_similarity_sampling(self, cap: cv2.VideoCapture, fps: int) -> List[int]:
         """
         Sample frames based on structural similarity between consecutive frames.
 
@@ -136,7 +136,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             frame_count += 1
         return frames_list
 
-    def get_frames_list(self, cap):
+    def get_frames_list(self, cap: cv2.VideoCapture) -> List[int]:
         """
         Get list of frame indices to extract based on split type.
 
@@ -169,7 +169,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         return self.structural_similarity_sampling(cap, fps)
 
-    def upload_frames(self, item, frames_list, cap, temp_dir):
+    def upload_frames(self, item: dl.Item, frames_list: List[int], cap: cv2.VideoCapture) -> None:
         """
         Upload extracted frames as new items with annotations.
 
@@ -185,18 +185,29 @@ class ServiceRunner(dl.BaseServiceRunner):
         item_dataset = item.dataset
         annotations = item.annotations.list()
         # TODO : check if using batch upload will reduce upload time.
+
+        frames_dir = os.path.join(self.temp_dir, "frames")
+        os.makedirs(frames_dir, exist_ok=True)
+
         for frame_idx in frames_list:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             success, frame = cap.read()
             if not success:
                 break
             frame_path = os.path.join(
-                temp_dir,
+                frames_dir,
                 f"{os.path.splitext(os.path.basename(item.filename))[0]}_{str(frame_idx).zfill(num_digits)}.jpg",
             )
             cv2.imwrite(frame_path, frame)
-            frame_item = item_dataset.items.upload(local_path=frame_path, remote_path=self.dl_output_folder)
-            if annotations:
+
+        # batch upload
+        frames_items_list = sorted(
+            list(item_dataset.items.upload(local_path=frames_dir, remote_path=self.dl_output_folder)),
+            key=lambda x: x.name,
+        )
+
+        if annotations:
+            for frame_item, frame_idx in zip(frames_items_list, frames_list):
                 frame_annotation = annotations.get_frame(frame_num=frame_idx)
                 builder = frame_item.annotations.builder()
                 for ann in frame_annotation.annotations:
@@ -208,7 +219,7 @@ class ServiceRunner(dl.BaseServiceRunner):
                         )
                     frame_item.annotations.upload(builder)
 
-    def video_to_frames(self, item: dl.Item, context: dl.Context):
+    def video_to_frames(self, item: dl.Item, context: dl.Context) -> None:
         """
         Split video into frames based on configured split type and parameters.
 
@@ -219,28 +230,42 @@ class ServiceRunner(dl.BaseServiceRunner):
         Returns:
             None
         """
+        cap = None
+        try:
+            logger.info('Running service Video To Frames')
 
-        logger.info('Running service Video To Frames')
+            node = context.node
+            self.split_type = node.metadata['customNodeConfig'].get('split_type', 'structural_similarity_sampling')
+            self.dl_output_folder = node.metadata['customNodeConfig']['output_dir']
 
-        node = context.node
-        self.split_type = node.metadata['customNodeConfig'].get('split_type', 'structural_similarity_sampling')
-        self.dl_output_folder = node.metadata['customNodeConfig']['output_dir']
+            if (
+                self.split_type != 'structural_similarity_sampling'
+                and self.split_type != 'embedding_similarity_sampling'
+            ):
+                self.splitter_arg = node.metadata['customNodeConfig']['splitter_arg']
+            else:
+                self.threshold = node.metadata['customNodeConfig']['threshold']
+                self.min_interval = node.metadata['customNodeConfig']['min_interval']
+                if self.split_type == 'structural_similarity_sampling':
+                    self.window_size = node.metadata['customNodeConfig']['window_size']
 
-        if self.split_type != 'structural_similarity_sampling' and self.split_type != 'embedding_similarity_sampling':
-            self.splitter_arg = node.metadata['customNodeConfig']['splitter_arg']
-        else:
-            self.threshold = node.metadata['customNodeConfig']['threshold']
-            self.min_interval = node.metadata['customNodeConfig']['min_interval']
-            if self.split_type == 'structural_similarity_sampling':
-                self.window_size = node.metadata['customNodeConfig']['window_size']
+            self.temp_dir = tempfile.mkdtemp()
+            input_video = item.download(local_path=self.temp_dir)
+            cap = cv2.VideoCapture(input_video)
 
-        temp_dir = tempfile.mkdtemp()
-        input_video = item.download(local_path=temp_dir)
-        cap = cv2.VideoCapture(input_video)
-        frames_list = self.get_frames_list(cap)
-        logger.info(f"frames_list: {frames_list}")
-        self.upload_frames(item, frames_list, cap, temp_dir)
-        cap.release()
+            if not cap.isOpened():
+                raise RuntimeError("Failed to open video file")
+
+            frames_list = self.get_frames_list(cap)
+            logger.info(f"frames_list: {frames_list}")
+            self.upload_frames(item, frames_list, cap)
+
+        except Exception as e:
+            logger.error(f"Error processing video: {str(e)}")
+            raise
+        finally:
+            if cap is not None:
+                cap.release()
 
 
 if __name__ == "__main__":
