@@ -52,7 +52,7 @@
                     "label": "Time Interval",
                     "value": "time_interval"
                   },
-                  {
+                  { 
                     "label": "Frames Interval",
                     "value": "frames_interval"
                   }

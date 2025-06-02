@@ -6,8 +6,13 @@
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
-    "Media Type": ["Video", "Image"],
-    "Application Type": ["Pipeline Node"],
+    "Media Type": [
+      "Video",
+      "Image"
+    ],
+    "Application Type": [
+      "Pipeline Node"
+    ],
     "License": "Apache 2.0"
   },
   "codebase": {
@@ -15,30 +20,215 @@
     "gitUrl": "https://github.com/dataloop-ai-apps/video-utils.git",
     "gitTag": "1.1.3"
   },
-  "scope": "public",
+  "scope": "project",
   "components": {
     "pipelineNodes": [
       {
         "scope": "node",
         "name": "frames-to-video",
+        "displayName": "Frames to Video Merge",
+        "description": "Merge frames into a video",
         "invoke": {
           "type": "function",
           "namespace": "frames-to-video.frames-to-video.frames_to_vid"
         },
         "categories": [
           "video-utils"
-        ]
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "output_video_type",
+              "title": "Output Video Type",
+              "props": {
+                "type": "string",
+                "required": true,
+                "options": [
+                  {
+                    "label": "Webm",
+                    "value": "webm"
+                  },
+                  {
+                    "label": "MP4",
+                    "value": "mp4"
+                  }
+                ],
+                "default": "webm"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-select"
+            },
+            {
+              "name": "tracker",
+              "title": "Tracker",
+              "props": {
+                "type": "string",
+                "required": true,
+                "options": [
+                  {
+                    "label": "ByteTrack",
+                    "value": "ByteTrack"
+                  },
+                  {
+                    "label": "BoTSORT",
+                    "value": "BoTSORT"
+                  },
+                  {
+                    "label": "DeepSORT",
+                    "value": "DeepSORT"
+                  }
+                ],
+                "default": "BoTSORT"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-select"
+            },
+            {
+              "name": "output_dir",
+              "title": "Dataset Output Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "output",
+                "required": true,
+                "placeholder": "Insert output directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "input_dir",
+              "title": "Dataset Input Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "input",
+                "required": true,
+                "placeholder": "Insert input directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "fps",
+              "title": "FPS",
+              "props": {
+                "type": "number",
+                "default": 30
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            }
+          ]
+        }
       },
       {
         "scope": "node",
         "name": "videos-to-video",
+        "displayName": "Videos to Video Merge",
+        "description": "Merge videos into a single video",
         "invoke": {
           "type": "function",
           "namespace": "videos-to-video.videos-to-video.videos_to_video"
         },
         "categories": [
           "video-utils"
-        ]
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "tracker",
+              "title": "Tracker",
+              "props": {
+                "type": "string",
+                "required": true,
+                "options": [
+                  {
+                    "label": "ByteTrack",
+                    "value": "ByteTrack"
+                  },
+                  {
+                    "label": "BoTSORT",
+                    "value": "BoTSORT"
+                  },
+                  {
+                    "label": "DeepSORT",
+                    "value": "DeepSORT"
+                  }
+                ],
+                "default": "BoTSORT"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-select"
+            },
+            {
+              "name": "output_dir",
+              "title": "Dataset Output Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "output",
+                "required": true,
+                "placeholder": "Insert output directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "input_dir",
+              "title": "Dataset Input Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "input",
+                "required": true,
+                "placeholder": "Insert input directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            }
+          ]
+        }
       }
     ],
     "modules": [
