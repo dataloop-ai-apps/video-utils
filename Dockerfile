@@ -9,26 +9,35 @@ ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 # Install system dependencies
 RUN apt-get update && apt-get install -y cmake && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
-
 # Switch back to non-root user
 USER 1000
 
-# Copy files
+WORKDIR /app/trackers
+RUN git clone https://github.com/ZQPei/deep_sort_pytorch.git
+RUN git clone https://github.com/ifzhang/ByteTrack.git
+RUN git clone https://github.com/NirAharon/BoT-SORT.git
+
+
+# Set working directory
+WORKDIR /app
+# Copy requirements file into the container
 COPY requirements.txt .
-COPY trackers /tmp/trackers
 
 # Install Python dependencies
 RUN pip install -r requirements.txt \
     && pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
 # Set PYTHONPATH for all trackers
-ENV PYTHONPATH="/tmp/trackers:/tmp/trackers/deep_sort_pytorch:/tmp/trackers/ByteTrack:$PYTHONPATH"
+ENV PYTHONPATH="/app/trackers/deep_sort_pytorch:/app/trackers/ByteTrack:/app/trackers/BoT-SORT:$PYTHONPATH"
 
 # Install ByteTrack (needs root for setup.py develop)
 USER root
-WORKDIR /tmp/trackers/ByteTrack
+WORKDIR /app/trackers/ByteTrack
 RUN pip install -r requirements.txt && python3 setup.py develop
 USER 1000
+
+#TODO remove this
+RUN pip install dotenv
+RUN pip install dtlpy
+
 
