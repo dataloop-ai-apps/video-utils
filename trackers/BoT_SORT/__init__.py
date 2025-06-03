@@ -1,0 +1,3 @@
+"""
+BoT-SORT tracker implementation.
+"""
