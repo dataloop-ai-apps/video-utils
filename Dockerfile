@@ -21,16 +21,10 @@ COPY trackers /tmp/trackers
 
 # Install Python dependencies
 RUN pip install -r requirements.txt \
-    && pip install dotenv \
-    && pip install dtlpy \
     && pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
 # Set PYTHONPATH for all trackers
 ENV PYTHONPATH="/tmp/trackers:/tmp/trackers/deep_sort_pytorch:/tmp/trackers/ByteTrack:$PYTHONPATH"
-
-# Install BoT-SORT requirements
-WORKDIR /tmp/trackers/BoT_SORT
-RUN pip install -r requirements.txt
 
 # Install ByteTrack (needs root for setup.py develop)
 USER root
@@ -38,5 +32,3 @@ WORKDIR /tmp/trackers/ByteTrack
 RUN pip install -r requirements.txt && python3 setup.py develop
 USER 1000
 
-# Final working directory
-WORKDIR /app
