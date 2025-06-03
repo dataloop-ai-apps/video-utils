@@ -15,12 +15,14 @@ logger = logging.getLogger('video-utils.frames_to_vid')
 
 class ServiceRunner(dl.BaseServiceRunner):
     def __init__(self):
-        self.fps = None
-        self.output_dir = None
-        self.output_video_type = None
-        self.input_dir = None
-        self.trackerName = None
+        self.fps: int = 0
+        self.output_dir: str = ""
+        self.output_video_type: str = ""
+        self.input_dir: str = ""
+        self.trackerName: str = ""
         self.tracker = None
+        self.local_input_folder: str = ""
+        self.local_output_folder: str = ""
 
     def set_config_params(self, node: dl.PipelineNode) -> None:
         """
@@ -36,19 +38,24 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.trackerName = node.metadata['customNodeConfig']['tracker']
         logger.info(f"customNodeConfig: {node.metadata['customNodeConfig']}")
 
-    def get_input_items(self, dataset: dl.Dataset) -> List[dl.Item]:
+    def get_input_items(self, items: List[dl.Item]) -> List[dl.Item]:
         """
-        Gets all items from dataset matching input directory path.
+        Gets input items either from provided list or from remote directory.
+        If input_dir is specified, fetches items from that remote directory.
+        Otherwise uses the provided items list.
 
         Args:
-            dataset: Dataloop dataset to get items from
+            items: List of input items
 
         Returns:
-            list: List of dataset items matching input path
+            List[dl.Item]: Filtered and sorted list of items
         """
-        filters = dl.Filters(field='dir', values=self.input_dir)
-        filters.sort_by(field='name')
-        items = dataset.items.get_all_items(filters=filters)
+        items = sorted(items, key=lambda x: x.name)
+        if self.input_dir is not None and self.input_dir.strip():
+            dataset = items[0].dataset
+            filters = dl.Filters(field='dir', values=self.input_dir)
+            filters.sort_by(field='name')
+            items = dataset.items.get_all_items(filters=filters)
         if not items or len(items) == 0:
             logger.error("No images match to merge")
             return []
@@ -74,20 +81,25 @@ class ServiceRunner(dl.BaseServiceRunner):
         logger.info(f"Stitching frames into video at {output_video_path}")
         fourcc = cv2.VideoWriter_fourcc(*("VP80" if self.output_video_type.lower() == "webm" else "mp4v"))
         writer = cv2.VideoWriter(output_video_path, fourcc, self.fps, (cv_frames[0].shape[1], cv_frames[0].shape[0]))
-        # Loop through each input image file and write it to the output video
-        logger.info(f"Writing frames to video")
-        for frame in cv_frames:
-            writer.write(frame)
+        try:
+            # Loop through each input image file and write it to the output video
+            logger.info(f"Writing frames to video")
+            for frame in cv_frames:
+                writer.write(frame)
 
-        # Release the VideoWriter object
-        writer.release()
-        logger.info(f"Uploading video to dataset")
-        video_item = dataset.items.upload(local_path=output_video_path, remote_path=self.output_dir)
-        video_item.fps = self.fps
-        video_item.update()
-        return video_item
+            # Release the VideoWriter object
+            writer.release()
+            logger.info(f"Uploading video to dataset")
+            video_item = dataset.items.upload(local_path=output_video_path, remote_path=self.output_dir)
+            video_item.fps = self.fps
+            video_item.update()
+            return video_item
+        finally:
+            # Ensure VideoWriter is released even if an error occurs
+            if writer is not None:
+                writer.release()
 
-    def frames_to_vid(self, item: dl.Item, context: dl.Context) -> None:
+    def frames_to_vid(self, items: List[dl.Item], context: dl.Context) -> dl.Item:
         """
         Converts a sequence of frames into a video with optional object tracking.
 
@@ -96,7 +108,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             context (dl.Context): Pipeline context containing configuration
 
         Returns:
-            None
+            dl.Item: The uploaded video item
         """
 
         logger.info('Running service Frames To Video')
@@ -106,7 +118,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.local_input_folder = tempfile.mkdtemp(suffix="_input")
         self.local_output_folder = tempfile.mkdtemp(suffix="_output")
 
-        items = self.get_input_items(item.dataset)
+        items = self.get_input_items(items)
         cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
         video_item = self.stitch_and_upload(item.dataset, cv_frames)
         builder = video_item.annotations.builder()
@@ -122,6 +134,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             self.tracker.update(frame_i, i, frame_annotations)
         logger.info("Uploading annotations to video")
         video_item.annotations.upload(annotations=builder)
+        return video_item
 
 
 if __name__ == "__main__":
@@ -137,11 +150,11 @@ if __name__ == "__main__":
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
         "fps": 20,
-        "output_dir": "/tmp_stitching_frames_to_video_deep_23",
+        "output_dir": "/tmp_stitching_frames_to_video_deep_245",
         "input_dir": "/split_5_sec_to_one_frame",
         "output_video_type": "webm",
         "tracker": "DeepSORT",
     }
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.frames_to_vid(item=dl.items.get(item_id="682a250fb188d7f0a74d53ed"), context=context)
+    runner.frames_to_vid(items=[dl.items.get(item_id="682a250fb188d7f0a74d53ed")], context=context)

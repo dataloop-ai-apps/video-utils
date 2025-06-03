@@ -243,24 +243,14 @@
             "description": "frames to video tool",
             "input": [
               {
+                "type": "Item[]",
+                "name": "items"
+              }
+            ],
+            "output": [
+              {
                 "type": "Item",
                 "name": "item"
-              },
-              {
-                "type": "Json",
-                "name": "dql_filter"
-              },
-              {
-                "type": "String",
-                "name": "output_folder"
-              },
-              {
-                "type": "String",
-                "name": "output_video_type"
-              },
-              {
-                "type": "Integer",
-                "name": "fps"
               }
             ],
             "displayIcon": "qa-sampling",
@@ -279,16 +269,14 @@
             "description": "videos to video tool",
             "input": [
               {
+                "type": "Item[]",
+                "name": "items"
+              }
+            ],
+            "output": [
+              {
                 "type": "Item",
                 "name": "item"
-              },
-              {
-                "type": "Json",
-                "name": "dql_filter"
-              },
-              {
-                "type": "String",
-                "name": "output_folder"
               }
             ],
             "displayIcon": "qa-sampling",

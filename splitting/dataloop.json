@@ -52,7 +52,7 @@
                     "label": "Time Interval",
                     "value": "time_interval"
                   },
-                  { 
+                  {
                     "label": "Frames Interval",
                     "value": "frames_interval"
                   }
@@ -254,7 +254,7 @@
                   {
                     "label": "Split by sub video length in seconds",
                     "value": "out_length"
-                  }            
+                  }
                 ],
                 "default": "num_splits"
               },
@@ -319,6 +319,12 @@
                 "name": "item"
               }
             ],
+            "output": [
+              {
+                "type": "Item[]",
+                "name": "items"
+              }
+            ],
             "displayIcon": "qa-sampling",
             "displayName": "Video to Frames Split"
           }
@@ -337,6 +343,12 @@
               {
                 "type": "Item",
                 "name": "item"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item[]",
+                "name": "items"
               }
             ],
             "displayIcon": "qa-sampling",

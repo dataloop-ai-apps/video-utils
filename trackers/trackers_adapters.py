@@ -1,15 +1,15 @@
 import os
+import argparse
 import numpy as np
 import torch
-import argparse
 import dtlpy as dl
 
-# Add BoT_SORT to Python path
-from tracker.mc_bot_sort import BoTSORT
+# Import BoTSORT from local path
+from trackers.BoT_SORT.tracker.mc_bot_sort import BoTSORT
 
-from deep_sort.deep_sort import DeepSort
+from trackers.deep_sort_pytorch.deep_sort.deep_sort import DeepSort
 
-from yolox.tracker.byte_tracker import BYTETracker
+from trackers.ByteTrack.yolox.tracker.byte_tracker import BYTETracker
 
 
 class BaseTracker:
@@ -123,15 +123,15 @@ class ByteTrackTracker(BaseTracker):
         self.tracker = BYTETracker(args=opts, frame_rate=frame_rate)
 
     def update(self, frame, fn, frame_annotations):
-        """Update tracker with new frame and annotations.
+        """Update the tracker with a new frame and its annotations.
 
         Args:
-            frame: Video frame
-            fn: Frame number
-            frame_annotations: List of annotations for current frame
+            frame: The current video frame to process
+            fn (int): Frame number
+            frame_annotations: List of annotations for the current frame
 
         Returns:
-            AnnotationBuilder: Updated annotations
+            dl.AnnotationBuilder: Updated annotations builder with tracking results
         """
         tracker_annotations = np.zeros((len(frame_annotations), 5))
         # Store input boxes for later matching
@@ -170,7 +170,17 @@ class ByteTrackTracker(BaseTracker):
                     best_iou = curr_iou
                     best_label = label
 
-            self.add_annotation(tlwh[2] * tlwh[3], fn, 0, tlbr[0], tlbr[1], tlbr[2], tlbr[3], tid, label=best_label)
+            self.add_annotation(
+                area=tlwh[2] * tlwh[3],
+                frame_number=fn,
+                confidence=0,
+                left=tlbr[0],
+                top=tlbr[1],
+                right=tlbr[2],
+                bottom=tlbr[3],
+                track_id=tid,
+                label=best_label,
+            )
 
         return self.annotations_builder
 
@@ -201,6 +211,16 @@ class BoTSORTTracker(BaseTracker):
         self.tracker = BoTSORT(opts, frame_rate=frame_rate)
 
     def update(self, frame, fn, frame_annotations):
+        """Update the tracker with a new frame and its annotations.
+
+        Args:
+            frame: The current video frame to process
+            fn (int): Frame number
+            frame_annotations: List of annotations for the current frame
+
+        Returns:
+            dl.AnnotationBuilder: Updated annotations builder with tracking results
+        """
         tracker_annotations = np.zeros((len(frame_annotations), 6))
         for i, ann in enumerate(frame_annotations):
             if ann.type != 'box':
@@ -222,7 +242,16 @@ class BoTSORTTracker(BaseTracker):
             tlbr = t.tlbr
             tid = t.track_id
             tcls = t.cls
-            self.add_annotation(tlwh[2] * tlwh[3], fn, tcls, tlbr[0], tlbr[1], tlbr[2], tlbr[3], tid)
+            self.add_annotation(
+                box_size=tlwh[2] * tlwh[3],
+                fn=fn,
+                label_id=tcls,
+                top=tlbr[0],
+                left=tlbr[1],
+                bottom=tlbr[2],
+                right=tlbr[3],
+                object_id=tid,
+            )
         return self.annotations_builder
 
 
@@ -243,6 +272,16 @@ class DeepSORTTracker(BaseTracker):
         self.tracker = DeepSort(model_path=model_path, use_cuda=torch.cuda.is_available())
 
     def update(self, frame, fn, frame_annotations):
+        """Update the tracker with a new frame and its annotations.
+
+        Args:
+            frame: The current video frame to process
+            fn (int): Frame number
+            frame_annotations: List of annotations for the current frame
+
+        Returns:
+            dl.AnnotationBuilder: Updated annotations builder with tracking results
+        """
         dets = []
         confs = []
         clss = []
@@ -276,7 +315,12 @@ class DeepSORTTracker(BaseTracker):
 
         for t in outputs:
             x1, y1, x2, y2, tcls, tid = t
+            print(f"-HHH- t: {t}")
+            print(f"-HHH- x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}, tcls: {tcls}, tid: {tid}")
             box_size = (x2 - x1) * (y2 - y1)
-            self.add_annotation(box_size, fn, int(tcls), y1, x1, y2, x2, int(tid))
+            print(f"-HHH- box_size: {box_size}")
+            self.add_annotation(
+                box_size=box_size, fn=fn, label_id=int(tcls), top=y1, left=x1, bottom=y2, right=x2, object_id=int(tid)
+            )
 
         return self.annotations_builder

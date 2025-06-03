@@ -201,7 +201,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         item: dl.Item,
         sub_videos_annotations_info: Dict[str, List[List[Any]]],
         sub_videos_intervals: List[List[int]],
-    ) -> None:
+    ) -> List[dl.Item]:
         """
         Upload sub videos and their annotations to the platform.
 
@@ -209,6 +209,9 @@ class ServiceRunner(dl.BaseServiceRunner):
             item: Source video item
             sub_videos_annotations_info: Dict mapping sub video names to their annotations
             sub_videos_intervals: List of frame intervals for each sub video
+
+        Returns:
+            List of uploaded sub video items
         """
         logger.info(f"Uploading sub videos and annotations to {self.dl_output_folder}")
         sub_videos_items = item.dataset.items.upload(

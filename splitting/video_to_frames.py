@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+import datetime
 from typing import List
 
 import cv2
@@ -170,33 +171,56 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         return self.structural_similarity_sampling(cap, fps)
 
-    def upload_frames(self, item: dl.Item, frames_list: List[int], cap: cv2.VideoCapture) -> None:
+    def upload_frames(self, item: dl.Item, frames_list: List[int], cap: cv2.VideoCapture) -> List[dl.Item]:
         """
         Upload extracted frames as new items with annotations.
 
         Args:
-            item: Source video item
+            item: Input video item
             frames_list: List of frame indices to extract
             cap: OpenCV video capture object
+
+        Returns:
+            List of uploaded frame items
         """
         if len(frames_list) == 0:
             return
         num_digits = len(str(max(frames_list)))
         item_dataset = item.dataset
         annotations = item.annotations.list()
+        items = []
         # TODO : check if using batch upload will reduce upload time.
+
+        frames_dir = os.path.join(self.temp_dir, "frames")
+        os.makedirs(frames_dir, exist_ok=True)
         for frame_idx in frames_list:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             success, frame = cap.read()
             if not success:
                 break
             frame_path = os.path.join(
-                self.temp_dir,
+                frames_dir,
                 f"{os.path.splitext(os.path.basename(item.filename))[0]}_{str(frame_idx).zfill(num_digits)}.jpg",
             )
             cv2.imwrite(frame_path, frame)
-            frame_item = item_dataset.items.upload(local_path=frame_path, remote_path=self.dl_output_folder)
-            if annotations:
+
+        print("-HHH_ start upload")
+        # batch upload
+        frames_items_generator = item_dataset.items.upload(
+            local_path=frames_dir,
+            remote_path=self.dl_output_folder,
+            item_metadata={
+                "origin_video_name": f"{os.path.basename(item.filename)}",
+                "time": datetime.datetime.now().isoformat(),
+                "frame_id": frames_list,
+            },
+        )
+        frames_items_list = sorted(list(frames_items_generator), key=lambda x: x.name)
+        print("-HHH_ end upload")
+
+        if annotations:
+            for frame_item in frames_items_list:
+                frame_idx = int(frame_item.name.split('_')[-1].split('.')[0])
                 frame_annotation = annotations.get_frame(frame_num=frame_idx)
                 builder = frame_item.annotations.builder()
                 for ann in frame_annotation.annotations:
@@ -206,9 +230,10 @@ class ServiceRunner(dl.BaseServiceRunner):
                                 top=ann.top, left=ann.left, bottom=ann.bottom, right=ann.right, label=ann.label
                             )
                         )
-                frame_item.annotations.upload(builder)
+            frame_item.annotations.upload(builder)
+        return items
 
-    def video_to_frames(self, item: dl.Item, context: dl.Context) -> None:
+    def video_to_frames(self, item: dl.Item, context: dl.Context) -> List[dl.Item]:
         """
         Split video into frames based on configured split type and parameters.
 
@@ -217,9 +242,10 @@ class ServiceRunner(dl.BaseServiceRunner):
             context (dl.Context): Pipeline context containing node configuration
 
         Returns:
-            None
+            List[dl.Item]: List of extracted frames
         """
         cap = None
+        items = []
         try:
             logger.info('Running service Video To Frames')
 
@@ -247,7 +273,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
             frames_list = self.get_frames_list(cap)
             logger.info(f"frames_list: {frames_list}")
-            self.upload_frames(item, frames_list, cap)
+            items = self.upload_frames(item, frames_list, cap)
 
         except Exception as e:
             logger.error(f"Error processing video: {str(e)}")
@@ -255,6 +281,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         finally:
             if cap is not None:
                 cap.release()
+
+        return items
 
 
 if __name__ == "__main__":
