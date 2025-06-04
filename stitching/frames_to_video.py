@@ -8,7 +8,7 @@ import cv2
 import dtlpy as dl
 import numpy as np
 from dotenv import load_dotenv
-from trackers.trackers_adapters import ByteTrackTracker, BoTSORTTracker, DeepSORTTracker
+from trackers_adapters import ByteTrackTracker, DeepSORTTracker
 
 logger = logging.getLogger('video-utils.frames_to_vid')
 
@@ -120,14 +120,12 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         items = self.get_input_items(items)
         cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
-        video_item = self.stitch_and_upload(item.dataset, cv_frames)
+        video_item = self.stitch_and_upload(items[0].dataset, cv_frames)
         builder = video_item.annotations.builder()
         if self.trackerName == "ByteTrack":
             self.tracker = ByteTrackTracker(annotations_builder=builder, frame_rate=self.fps)
         elif self.trackerName == "DeepSORT":
             self.tracker = DeepSORTTracker(annotations_builder=builder)
-        elif self.trackerName == "BoTSORT":
-            self.tracker = BoTSORTTracker(annotations_builder=builder, frame_rate=self.fps)
         logger.info("Tracking frames")
         for i, (frame_i, item_i) in enumerate(zip(cv_frames, items)):
             frame_annotations = item_i.annotations.list().annotations
@@ -150,10 +148,10 @@ if __name__ == "__main__":
     context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
     context.node.metadata["customNodeConfig"] = {
         "fps": 20,
-        "output_dir": "/tmp_stitching_frames_to_video_deep_245",
+        "output_dir": "/tmp_stitching_frames_to_video_byte_track_2488",
         "input_dir": "/split_5_sec_to_one_frame",
         "output_video_type": "webm",
-        "tracker": "DeepSORT",
+        "tracker": "ByteTrack",
     }
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}

@@ -75,15 +75,11 @@
                     "value": "ByteTrack"
                   },
                   {
-                    "label": "BoTSORT",
-                    "value": "BoTSORT"
-                  },
-                  {
                     "label": "DeepSORT",
                     "value": "DeepSORT"
                   }
                 ],
-                "default": "BoTSORT"
+                "default": "ByteTrack"
               },
               "rules": [
                 {
@@ -173,15 +169,11 @@
                     "value": "ByteTrack"
                   },
                   {
-                    "label": "BoTSORT",
-                    "value": "BoTSORT"
-                  },
-                  {
                     "label": "DeepSORT",
                     "value": "DeepSORT"
                   }
                 ],
-                "default": "BoTSORT"
+                "default": "ByteTrack"
               },
               "rules": [
                 {

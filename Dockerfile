@@ -12,14 +12,14 @@ RUN apt-get update && apt-get install -y cmake && rm -rf /var/lib/apt/lists/*
 # Switch back to non-root user
 USER 1000
 
-WORKDIR /app/trackers
+WORKDIR /trackers
 RUN git clone https://github.com/ZQPei/deep_sort_pytorch.git
 RUN git clone https://github.com/ifzhang/ByteTrack.git
-RUN git clone https://github.com/NirAharon/BoT-SORT.git
+#RUN git clone https://github.com/NirAharon/BoT-SORT.git
 
 
 # Set working directory
-WORKDIR /app
+WORKDIR /tmp/
 # Copy requirements file into the container
 COPY requirements.txt .
 
@@ -28,13 +28,15 @@ RUN pip install -r requirements.txt \
     && pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
 # Set PYTHONPATH for all trackers
-ENV PYTHONPATH="/app/trackers/deep_sort_pytorch:/app/trackers/ByteTrack:/app/trackers/BoT-SORT:$PYTHONPATH"
+ENV PYTHONPATH="/trackers/deep_sort_pytorch:/trackers/ByteTrack:$PYTHONPATH"
 
 # Install ByteTrack (needs root for setup.py develop)
 USER root
-WORKDIR /app/trackers/ByteTrack
+WORKDIR /trackers/ByteTrack
 RUN pip install -r requirements.txt && python3 setup.py develop
 USER 1000
+
+WORKDIR /
 
 #TODO remove this
 RUN pip install dotenv

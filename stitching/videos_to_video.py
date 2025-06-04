@@ -9,7 +9,7 @@ import cv2
 import dtlpy as dl
 from dotenv import load_dotenv
 
-from trackings.trackers_adapters import ByteTrackTracker, BoTSORTTracker, DeepSORTTracker
+from trackers_adapters import ByteTrackTracker, DeepSORTTracker
 
 logger = logging.getLogger('video-utils.videos_to_video')
 
@@ -199,8 +199,6 @@ class ServiceRunner(dl.BaseServiceRunner):
             tracker = ByteTrackTracker(annotations_builder=video_item.annotations.builder(), frame_rate=video_item.fps)
         elif self.trackerName == "DeepSORT":
             tracker = DeepSORTTracker(annotations_builder=video_item.annotations.builder(), frame_rate=video_item.fps)
-        elif self.trackerName == "BoTSORT":
-            tracker = BoTSORTTracker(annotations_builder=video_item.annotations.builder(), frame_rate=video_item.fps)
         else:
             raise ValueError(f"Invalid tracker: {self.trackerName}")
         for i, (frame, frame_annotations) in enumerate(zip(merged_video_frames, merged_video_annotations)):
