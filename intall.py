@@ -15,8 +15,8 @@ if dl.token_expired():
 if use_rc_env:
     project = dl.projects.get(project_name='Husam Testing')
 else:
-    project = dl.projects.get(project_name='ShadiDemo')
-    # project = dl.projects.get(project_name='IPM development')
+    # project = dl.projects.get(project_name='ShadiDemo')
+    project = dl.projects.get(project_name='IPM development')
     # project = dl.projects.get(project_name='Boston Dynamics POC')
 
 models = project.models.list().print()
