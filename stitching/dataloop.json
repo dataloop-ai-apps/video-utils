@@ -226,7 +226,7 @@
     "modules": [
       {
         "name": "frames-to-video",
-        "entryPoint": "frames_to_video/frames_to_video.py",
+        "entryPoint": "frames_to_video.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
@@ -252,7 +252,7 @@
       },
       {
         "name": "videos-to-video",
-        "entryPoint": "videos_to_video/videos_to_video.py",
+        "entryPoint": "videos_to_video.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
@@ -283,7 +283,7 @@
         "moduleName": "frames-to-video",
         "runtime": {
           "podType": "regular-xs",
-          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.1",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},
@@ -308,7 +308,7 @@
         "moduleName": "videos-to-video",
         "runtime": {
           "podType": "regular-xs",
-          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.1",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},

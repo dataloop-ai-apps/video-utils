@@ -1,14 +1,11 @@
 import os
 import argparse
+from typing import Optional, List, Tuple
 import numpy as np
 import torch
 import dtlpy as dl
 
-# Import BoTSORT from local path
-# from trackers.BoT_SORT.tracker.mc_bot_sort import BoTSORT
-
 from trackers.deep_sort_pytorch.deep_sort.deep_sort import DeepSort
-
 from trackers.ByteTrack.yolox.tracker.byte_tracker import BYTETracker
 
 
@@ -29,10 +26,9 @@ class BaseTracker:
         label_to_id_map (dict): Maps label strings to numeric IDs
         id_to_label_map (dict): Maps numeric IDs back to label strings
         annotations_builder (dl.AnnotationBuilder): Builder for creating annotations
-        annotations_list (list): List to store annotation dictionaries
     """
 
-    def __init__(self, min_box_area, annotations_builder=None):
+    def __init__(self, min_box_area: float, annotations_builder: Optional[dl.AnnotationCollection] = None) -> None:
         """Initialize base tracker with minimum box area and optional annotation builder.
 
         Args:
@@ -43,11 +39,37 @@ class BaseTracker:
         self.label_to_id_map = {}
         self.id_to_label_map = {}
         self.annotations_builder = annotations_builder
-        self.annotations_list = []
 
-    def update(self, frame, fn, frame_annotations): ...
+    def update(
+        self, frame: np.ndarray, fn: int, frame_annotations: List[dl.Annotation]
+    ) -> Optional[dl.AnnotationCollection]:
+        """Update the tracker with a new frame and its annotations.
 
-    def add_annotation(self, box_size, fn, label_id, top, left, bottom, right, object_id, label=None):
+        Args:
+            frame: The current video frame to process
+            fn (int): Frame number
+            frame_annotations: List of annotations for the current frame
+
+        Returns:
+            dl.AnnotationCollection: Updated annotations collection with tracking results
+
+        Raises:
+            NotImplementedError: This is a pure virtual method that must be implemented by subclasses
+        """
+        raise NotImplementedError("update() must be implemented by subclass")
+
+    def add_annotation(
+        self,
+        box_size: float,
+        fn: int,
+        label_id: int,
+        top: float,
+        left: float,
+        bottom: float,
+        right: float,
+        object_id: int,
+        label: Optional[str] = None,
+    ) -> None:
         """Add annotation if box size exceeds minimum area threshold.
 
         Args:
@@ -74,29 +96,19 @@ class BaseTracker:
             print(f"label is None for object_id: {object_id}")
             return
 
-        annotation = {
-            'annotation_definition': dl.Box(top=top, left=left, bottom=bottom, right=right, label=label),
-            'fixed': fixed,
-            'frame_num': fn,
-            'end_frame_num': fn,
-            'object_id': object_id,
-        }
-
-        self.annotations_list.append(annotation)
-
         if self.annotations_builder is not None:
             self.annotations_builder.add(
-                annotation_definition=annotation['annotation_definition'],
-                fixed=annotation['fixed'],
-                frame_num=annotation['frame_num'],
-                end_frame_num=annotation['end_frame_num'],
-                object_id=annotation['object_id'],
+                annotation_definition=dl.Box(top=top, left=left, bottom=bottom, right=right, label=label),
+                fixed=fixed,
+                frame_num=fn,
+                end_frame_num=fn,
+                object_id=object_id,
             )
 
 
 class ByteTrackTracker(BaseTracker):
     @staticmethod
-    def iou(boxA, boxB):
+    def iou(boxA: Tuple[float, float, float, float], boxB: Tuple[float, float, float, float]) -> float:
         """Calculate intersection over union between two bounding boxes.
 
         Args:
@@ -117,12 +129,14 @@ class ByteTrackTracker(BaseTracker):
         iou = interArea / float(boxAArea + boxBArea - interArea + 1e-6)
         return iou
 
-    def __init__(self, annotations_builder, frame_rate):
+    def __init__(self, annotations_builder: dl.AnnotationCollection, frame_rate: float) -> None:
         super().__init__(min_box_area=0, annotations_builder=annotations_builder)
         opts = argparse.Namespace(track_thresh=0.5, track_buffer=30, match_thresh=0.8, mot20=False)
         self.tracker = BYTETracker(args=opts, frame_rate=frame_rate)
 
-    def update(self, frame, fn, frame_annotations):
+    def update(
+        self, frame: np.ndarray, fn: int, frame_annotations: List[dl.Annotation]
+    ) -> Optional[dl.AnnotationCollection]:
         """Update the tracker with a new frame and its annotations.
 
         Args:
@@ -131,7 +145,7 @@ class ByteTrackTracker(BaseTracker):
             frame_annotations: List of annotations for the current frame
 
         Returns:
-            dl.AnnotationBuilder: Updated annotations builder with tracking results
+            dl.AnnotationCollection: Updated annotations collection with tracking results
         """
         tracker_annotations = np.zeros((len(frame_annotations), 5))
         # Store input boxes for later matching
@@ -185,83 +199,21 @@ class ByteTrackTracker(BaseTracker):
         return self.annotations_builder
 
 
-# class BoTSORTTracker(BaseTracker):
-#     def __init__(self, annotations_builder, frame_rate):
-#         super().__init__(annotations_builder)
-#         opts = argparse.Namespace(
-#             track_high_thresh=0.11,
-#             track_low_thresh=0.1,
-#             new_track_thresh=0.2,
-#             conf_thres=0.09,
-#             iou_thres=0.7,
-#             agnostic_nms=True,
-#             name='exp',
-#             track_thresh=0.6,
-#             track_buffer=30,
-#             match_thresh=0.8,
-#             aspect_ratio_thresh=1.6,
-#             min_box_area=10,
-#             mot20=True,
-#             cmc_method="sparseOptFlow",
-#             ablation=False,
-#             with_reid=False,
-#             proximity_thresh=0.5,
-#             appearance_thresh=0.25,
-#         )
-#         self.tracker = BoTSORT(opts, frame_rate=frame_rate)
-
-#     def update(self, frame, fn, frame_annotations):
-#         """Update the tracker with a new frame and its annotations.
-
-#         Args:
-#             frame: The current video frame to process
-#             fn (int): Frame number
-#             frame_annotations: List of annotations for the current frame
-
-#         Returns:
-#             dl.AnnotationBuilder: Updated annotations builder with tracking results
-#         """
-#         tracker_annotations = np.zeros((len(frame_annotations), 6))
-#         for i, ann in enumerate(frame_annotations):
-#             if ann.type != 'box':
-#                 continue
-#             tracker_annotations[i, :4] = [ann.top, ann.left, ann.bottom, ann.right]
-#             try:
-#                 tracker_annotations[i, 4] = ann.metadata['user']['model']['confidence']
-#             except KeyError:
-#                 tracker_annotations[i, 4] = 1
-#             label_id = self.label_to_id_map.get(ann.label, None)
-#             if label_id is None:
-#                 label_id = len(self.label_to_id_map)
-#                 self.id_to_label_map[label_id] = ann.label
-#                 self.label_to_id_map[ann.label] = label_id
-#             tracker_annotations[i, 5] = label_id
-#         online_targets = self.tracker.update(tracker_annotations, frame.copy())
-#         for t in online_targets:
-#             tlwh = t.tlwh
-#             tlbr = t.tlbr
-#             tid = t.track_id
-#             tcls = t.cls
-#             self.add_annotation(
-#                 box_size=tlwh[2] * tlwh[3],
-#                 fn=fn,
-#                 label_id=tcls,
-#                 top=tlbr[0],
-#                 left=tlbr[1],
-#                 bottom=tlbr[2],
-#                 right=tlbr[3],
-#                 object_id=tid,
-#             )
-#         return self.annotations_builder
-
-
 class DeepSORTTracker(BaseTracker):
-    def __init__(self, annotations_builder):
+    def __init__(self, annotations_builder: dl.AnnotationCollection) -> None:
         super().__init__(min_box_area=0, annotations_builder=annotations_builder)
         model_path = os.path.join(os.path.dirname(__file__), 'deep_sort_checkpoint', 'ckpt.t7')
+        if not os.path.exists(model_path):
+            model_path = '/trackers/deep_sort_pytorch_ckpt/ckpt.t7'
+            if not os.path.exists(model_path):
+                raise FileNotFoundError(
+                    "DeepSORT model checkpoint not found at either 'deep_sort_checkpoint/ckpt.t7' or '/trackers/ckpt.t7'"
+                )
         self.tracker = DeepSort(model_path=model_path, use_cuda=torch.cuda.is_available())
 
-    def update(self, frame, fn, frame_annotations):
+    def update(
+        self, frame: np.ndarray, fn: int, frame_annotations: List[dl.Annotation]
+    ) -> Optional[dl.AnnotationCollection]:
         """Update the tracker with a new frame and its annotations.
 
         Args:
@@ -270,7 +222,7 @@ class DeepSORTTracker(BaseTracker):
             frame_annotations: List of annotations for the current frame
 
         Returns:
-            dl.AnnotationBuilder: Updated annotations builder with tracking results
+            dl.AnnotationCollection: Updated annotations collection with tracking results
         """
         dets = []
         confs = []
@@ -305,10 +257,7 @@ class DeepSORTTracker(BaseTracker):
 
         for t in outputs:
             x1, y1, x2, y2, tcls, tid = t
-            print(f"-HHH- t: {t}")
-            print(f"-HHH- x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}, tcls: {tcls}, tid: {tid}")
             box_size = (x2 - x1) * (y2 - y1)
-            print(f"-HHH- box_size: {box_size}")
             self.add_annotation(
                 box_size=box_size, fn=fn, label_id=int(tcls), top=y1, left=x1, bottom=y2, right=x2, object_id=int(tid)
             )

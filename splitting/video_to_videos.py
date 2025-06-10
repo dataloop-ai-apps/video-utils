@@ -149,11 +149,11 @@ class ServiceRunner(dl.BaseServiceRunner):
             f"total_frames={self.total_frames}, max_fc_len={self.max_fc_len}"
         )
 
-    def process_video_split(
+    def write_video_segment(
         self, cap: cv2.VideoCapture, annotations: Any, start_frame: int, end_frame: int, i: int
     ) -> Tuple[str, List[List[Any]]]:
         """
-        Process a single video split by writing frames to output and collecting annotations.
+        Extract a segment from source video and collect its annotations.
 
         Args:
             cap: OpenCV video capture object
@@ -213,7 +213,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         Returns:
             List of uploaded sub video items
         """
-        logger.info(f"Uploading sub videos and annotations to {self.dl_output_folder}")
+        logger.info(f"Uploading sub videos to {self.dl_output_folder}")
         sub_videos_items = item.dataset.items.upload(
             local_path=os.path.join(self.local_output_folder, "*"),
             remote_path=self.dl_output_folder,
@@ -223,7 +223,8 @@ class ServiceRunner(dl.BaseServiceRunner):
                 "sub_videos_intervals": sub_videos_intervals,
             },
         )
-        for i, sub_video_item in enumerate(sub_videos_items):
+        logger.info("start uploading sub videos and annotations")
+        for sub_video_item in sub_videos_items:
             sub_video_item.fps = item.fps
             builder = sub_video_item.annotations.builder()
             sub_video_annotations_info = sub_videos_annotations_info[sub_video_item.name]
@@ -244,14 +245,18 @@ class ServiceRunner(dl.BaseServiceRunner):
 
             # Upload the annotations to platform
             sub_video_item.annotations.upload(annotations=builder)
+        return sub_videos_items
 
     def video_to_videos(self, item: dl.Item, context: dl.Context) -> None:
         """
-        Split video into multiple sub-videos based on specified split type and parameters.
+        Split a video into multiple sub-videos based on specified parameters.
 
         Args:
-            item (dl.Item): Input video item
-            context (dl.Context): Node execution context
+            item (dl.Item): Input video item to split
+            context (dl.Context): Function context containing configuration
+
+        Returns:
+            List[dl.Item]: List of created sub-video items
         """
         logger.info('Running service Video To Videos')
         cap = None
@@ -277,8 +282,10 @@ class ServiceRunner(dl.BaseServiceRunner):
                 sub_videos_intervals = self.get_sub_videos_intervals_by_num_frames(self.splitter_arg)
             elif self.split_type == "num_splits":
                 sub_videos_intervals = self.get_sub_videos_intervals_by_num_splits(self.splitter_arg)
-            else:  # split_type == out_length
+            elif self.split_type == "out_length":
                 sub_videos_intervals = self.get_sub_videos_intervals_by_length(self.splitter_arg)
+            else:
+                raise ValueError(f"Invalid split type: {self.split_type}")
 
             logger.info(f"sub_videos_intervals: {sub_videos_intervals}")
 
@@ -286,13 +293,13 @@ class ServiceRunner(dl.BaseServiceRunner):
             annotations = item.annotations.list()
             sub_videos_annotations_info = {}
             for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
-                sub_video_name, sub_video_annotations = self.process_video_split(
+                sub_video_name, sub_video_annotations = self.write_video_segment(
                     cap=cap, annotations=annotations, start_frame=start_frame, end_frame=end_frame, i=i
                 )
                 sub_videos_annotations_info[sub_video_name] = sub_video_annotations
 
             logger.info(f"Uploading sub videos and annotations to {self.dl_output_folder}")
-            self.upload_sub_videos_and_annotations(item, sub_videos_annotations_info, sub_videos_intervals)
+            return self.upload_sub_videos_and_annotations(item, sub_videos_annotations_info, sub_videos_intervals)
 
         except Exception as e:
             logger.error(f"Error processing video: {str(e)}")

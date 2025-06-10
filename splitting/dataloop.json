@@ -2,7 +2,7 @@
   "displayName": "[Video Utils] - Splitting ",
   "name": "video-utils-splitting",
   "description": "Video Utils - Splitting is a collection of functions for video manipulation. The package includes functions for video splitting, video to videos splitting, and smart subsampling.",
-  "version": "1.1.3",
+  "version": "1.1.7",
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
@@ -45,15 +45,15 @@
                 "required": true,
                 "options": [
                   {
-                    "label": "Number of Splits",
+                    "label": "Split by Number of Splits",
                     "value": "num_splits"
                   },
                   {
-                    "label": "Time Interval",
+                    "label": "Split by Time Interval",
                     "value": "time_interval"
                   },
                   {
-                    "label": "Frames Interval",
+                    "label": "Split by Frames Interval",
                     "value": "frames_interval"
                   }
                 ],
@@ -110,7 +110,7 @@
         "description": "Split video into frames by structural or embedding similarity.",
         "invoke": {
           "type": "function",
-          "namespace": "video-to-frames.smart-subsampling.video_to_frames"
+          "namespace": "video-to-frames.video-to-frames.video_to_frames"
         },
         "categories": [
           "video-utils"
@@ -288,8 +288,10 @@
               "name": "splitter_arg",
               "title": "Number of Splits/Time Interval/Frames Interval",
               "props": {
+                "title": true,
                 "type": "number",
-                "default": 2
+                "default": 2,
+                "required": true                
               },
               "rules": [
                 {
@@ -306,7 +308,7 @@
     "modules": [
       {
         "name": "video-to-frames",
-        "entryPoint": "splitting/video_to_frames.py",
+        "entryPoint": "video_to_frames.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
@@ -332,7 +334,7 @@
       },
       {
         "name": "video-to-videos",
-        "entryPoint": "splitting/video_to_videos.py",
+        "entryPoint": "video_to_videos.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
@@ -355,26 +357,6 @@
             "displayName": "Video To Videos Split"
           }
         ]
-      },
-      {
-        "name": "smart-subsampling",
-        "entryPoint": "splitting/video_to_frames.py",
-        "className": "ServiceRunner",
-        "initInputs": [],
-        "functions": [
-          {
-            "name": "video_to_frames_smart_subsampling",
-            "description": "video splitting by structural or embedding similarity",
-            "input": [
-              {
-                "type": "Item",
-                "name": "item"
-              }
-            ],
-            "displayIcon": "qa-sampling",
-            "displayName": "Smart Subsampling - Video to Frames"
-          }
-        ]
       }
     ],
     "services": [
@@ -383,7 +365,7 @@
         "moduleName": "video-to-frames",
         "runtime": {
           "podType": "regular-xs",
-          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.1",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},
@@ -408,33 +390,8 @@
         "moduleName": "video-to-videos",
         "runtime": {
           "podType": "regular-xs",
-          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.1",
           "numReplicas": 1,
-          "concurrency": 10,
-          "pyPackages": {},
-          "singleAgent": false,
-          "autoscaler": {
-            "type": "rabbitmq",
-            "minReplicas": 0,
-            "maxReplicas": 2,
-            "queueLength": 10
-          },
-          "preemptible": false
-        },
-        "maxAttempts": 3,
-        "executionTimeout": 172800,
-        "drainTime": 600,
-        "onReset": "failed",
-        "runExecutionAsProcess": false,
-        "operation": "none"
-      },
-      {
-        "name": "smart-subsampling",
-        "moduleName": "smart-subsampling",
-        "runtime": {
-          "podType": "regular-xs",
-          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
-          "numReplicas": 0,
           "concurrency": 10,
           "pyPackages": {},
           "singleAgent": false,

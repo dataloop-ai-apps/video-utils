@@ -103,7 +103,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         Returns:
             list: Frame indices that meet similarity threshold
         """
-        # structural similarity sampling
         logger.info(f"structural_similarity_sampling: {self.window_size}, {self.threshold}, {self.min_interval}")
 
         frames_list = []
@@ -168,8 +167,10 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         if self.split_type == 'embedding_similarity_sampling':
             return self.embedding_similarity_sampling(cap, fps)
+        if self.split_type == 'structural_similarity_sampling':
+            return self.structural_similarity_sampling(cap, fps)
 
-        return self.structural_similarity_sampling(cap, fps)
+        raise ValueError(f"Invalid split type: {self.split_type}")
 
     def upload_frames(self, item: dl.Item, frames_list: List[int], cap: cv2.VideoCapture) -> List[dl.Item]:
         """
@@ -204,7 +205,6 @@ class ServiceRunner(dl.BaseServiceRunner):
             )
             cv2.imwrite(frame_path, frame)
 
-        print("-HHH_ start upload")
         # batch upload
         frames_items_generator = item_dataset.items.upload(
             local_path=frames_dir,
@@ -216,7 +216,6 @@ class ServiceRunner(dl.BaseServiceRunner):
             },
         )
         frames_items_list = sorted(list(frames_items_generator), key=lambda x: x.name)
-        print("-HHH_ end upload")
 
         if annotations:
             for frame_item in frames_items_list:
@@ -252,11 +251,8 @@ class ServiceRunner(dl.BaseServiceRunner):
             node = context.node
             self.split_type = node.metadata['customNodeConfig'].get('split_type', 'structural_similarity_sampling')
             self.dl_output_folder = node.metadata['customNodeConfig']['output_dir']
-
-            if (
-                self.split_type != 'structural_similarity_sampling'
-                and self.split_type != 'embedding_similarity_sampling'
-            ):
+            logger.info(f"split_type: {self.split_type}")
+            if self.split_type not in {'structural_similarity_sampling', 'embedding_similarity_sampling'}:
                 self.splitter_arg = node.metadata['customNodeConfig']['splitter_arg']
             else:
                 self.threshold = node.metadata['customNodeConfig']['threshold']
@@ -265,9 +261,9 @@ class ServiceRunner(dl.BaseServiceRunner):
                     self.window_size = node.metadata['customNodeConfig']['window_size']
 
             self.temp_dir = tempfile.mkdtemp()
+            logger.info(f"start downloading video to tmp dir {self.temp_dir}")
             input_video = item.download(local_path=self.temp_dir)
             cap = cv2.VideoCapture(input_video)
-
             if not cap.isOpened():
                 raise RuntimeError("Failed to open video file")
 

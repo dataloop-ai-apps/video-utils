@@ -126,6 +126,8 @@ class ServiceRunner(dl.BaseServiceRunner):
             self.tracker = ByteTrackTracker(annotations_builder=builder, frame_rate=self.fps)
         elif self.trackerName == "DeepSORT":
             self.tracker = DeepSORTTracker(annotations_builder=builder)
+        else:
+            raise ValueError(f"Invalid tracker name: {self.trackerName}")
         logger.info("Tracking frames")
         for i, (frame_i, item_i) in enumerate(zip(cv_frames, items)):
             frame_annotations = item_i.annotations.list().annotations

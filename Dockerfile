@@ -15,6 +15,10 @@ USER 1000
 WORKDIR /trackers
 RUN git clone https://github.com/ZQPei/deep_sort_pytorch.git
 RUN git clone https://github.com/ifzhang/ByteTrack.git
+# Download the checkpoint file for deep_sort_pytorch
+WORKDIR /trackers/deep_sort_pytorch_ckpt
+RUN curl -L "https://drive.usercontent.google.com/download?id=1_qwTWdzT9dWNudpusgKavj_4elGgbkUN&export=download&authuser=0&confirm=t&uuid=66474786-6d1e-4645-b02f-f3efca1441e0&at=ALoNOgllhCQYv3CXbS8RWuVC4BaF:1749034406784" -o ckpt.t7
+
 #RUN git clone https://github.com/NirAharon/BoT-SORT.git
 
 
