@@ -166,7 +166,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             Tuple of (sub video filename, annotations list)
         """
         sub_video_name = f"{self.input_base_name}_{str(i).zfill(self.max_fc_len)}_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{self.video_type}"
-        output_video = os.path.join(self.local_output_folder, sub_video_name)
+        output_video = os.path.join(self.local_output_folder, self.dl_output_folder, sub_video_name)
         sub_video_annotations = []
 
         writer = cv2.VideoWriter(output_video, self.fourcc, self.fps, self.frame_size)
@@ -215,8 +215,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         """
         logger.info(f"Uploading sub videos to {self.dl_output_folder}")
         sub_videos_items = item.dataset.items.upload(
-            local_path=os.path.join(self.local_output_folder, "*"),
-            remote_path=self.dl_output_folder,
+            local_path=os.path.join(self.local_output_folder, self.dl_output_folder),
+            remote_path='/',
             item_metadata={
                 "origin_video_name": f"{self.input_base_name}.{self.video_type}",
                 "time": datetime.datetime.now().isoformat(),

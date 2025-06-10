@@ -423,15 +423,16 @@ class ServiceRunner(dl.BaseServiceRunner):
             List[dl.Item]: Filtered and sorted list of items
         """
         items = sorted(items, key=lambda x: x.name)
+        logger.info(f"received items length: {len(items)}")
         if self.input_dir is not None and self.input_dir.strip():
+            logger.info(f"input_dir: {self.input_dir}")
             dataset = items[0].dataset
-            filters = dl.Filters(field='dir', values=self.input_dir)
-            filters.sort_by(field='name')
-            items = dataset.items.get_all_items(filters=filters)
+            filters = dl.Filters(resource=dl.FiltersResource.ITEM, field='dir', values=("/" + self.input_dir))            filters.sort_by(field='name')
+            #items = dataset.items.get_all_items(filters=filters)
+            items = list(dataset.items.list(filters=filters).all())
         if not items or len(items) == 0:
             logger.error("No images match to merge")
             return []
-        # TODO : check if there a batch download
         logger.info(f"get_input_items number of items: {len(items)}")
         return items
 
@@ -519,7 +520,8 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         is_same_split = ServiceRunner.is_items_from_same_split(items)
         logger.info(f"is_same_split: {is_same_split}")
-        input_files = [item.download(local_path=self.local_input_folder) for item in items]
+        #input_files = [item.download(local_path=self.local_input_folder) for item in items]
+        input_files = sorted(items[0].dataset.items.download(local_path=self.local_input_folder,items=items), reverse=True)
         logger.info(f"input_files length: {len(input_files)}")
         # Create a VideoWriter object to write the merged video to a file
         writer, output_video_path, fps = self.get_video_writer(input_files[0], items[0], is_same_split)
