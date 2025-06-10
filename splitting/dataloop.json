@@ -1,8 +1,8 @@
 {
-  "displayName": "[Video Utils] - Splitting ",
-  "name": "video-utils-splitting",
+  "displayName": "[Video Utils] - Split",
+  "name": "video-utils-split",
   "description": "Video Utils - Splitting is a collection of functions for video manipulation. The package includes functions for video splitting, video to videos splitting, and smart subsampling.",
-  "version": "1.1.7",
+  "version": "1.1.10",
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
@@ -15,11 +15,7 @@
     ],
     "License": "Apache 2.0"
   },
-  "codebase": {
-    "type": "git",
-    "gitUrl": "https://github.com/dataloop-ai-apps/video-utils.git",
-    "gitTag": "1.1.3"
-  },
+  
   "scope": "project",
   "components": {
     "pipelineNodes": [
@@ -308,7 +304,7 @@
     "modules": [
       {
         "name": "video-to-frames",
-        "entryPoint": "video_to_frames.py",
+        "entryPoint": "splitting/video_to_frames.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [
@@ -334,7 +330,7 @@
       },
       {
         "name": "video-to-videos",
-        "entryPoint": "video_to_videos.py",
+        "entryPoint": "splitting/video_to_videos.py",
         "className": "ServiceRunner",
         "initInputs": [],
         "functions": [

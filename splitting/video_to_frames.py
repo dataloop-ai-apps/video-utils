@@ -160,7 +160,15 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         if self.split_type == 'num_splits':
             logger.info(f"num_splits: {self.splitter_arg}")
-            divisor = (self.splitter_arg - 1) - (0 if total_frames % (self.splitter_arg - 1) else 1)
+            if self.splitter_arg <= 1:
+                # If num_splits is 1 or less, just return the first frame
+                return [0]
+            if total_frames <= 1:
+                # If video has 0 or 1 frames, return all frames
+                return list(range(total_frames))
+
+            # Calculate divisor ensuring it's never zero
+            divisor = max(1, (self.splitter_arg - 1) - (0 if total_frames % (self.splitter_arg - 1) else 1))
             frames_interval = total_frames // divisor
             logger.info(f"frames_interval: {frames_interval}")
             return list(range(0, total_frames, frames_interval))
@@ -189,10 +197,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         num_digits = len(str(max(frames_list)))
         item_dataset = item.dataset
         annotations = item.annotations.list()
-        items = []
-        # TODO : check if using batch upload will reduce upload time.
-
-        frames_dir = os.path.join(self.temp_dir, "frames")
+        # TODO : check if we support nested folders.
+        logger.info(f"frames_dir: {self.dl_output_folder}")
+        frames_dir = os.path.join(self.temp_dir, self.dl_output_folder)
         os.makedirs(frames_dir, exist_ok=True)
         for frame_idx in frames_list:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
@@ -205,10 +212,11 @@ class ServiceRunner(dl.BaseServiceRunner):
             )
             cv2.imwrite(frame_path, frame)
 
+        logger.info(f"uploading frames to {self.dl_output_folder}")
         # batch upload
         frames_items_generator = item_dataset.items.upload(
             local_path=frames_dir,
-            remote_path=self.dl_output_folder,
+            remote_path='/',
             item_metadata={
                 "origin_video_name": f"{os.path.basename(item.filename)}",
                 "time": datetime.datetime.now().isoformat(),
@@ -217,6 +225,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         )
         frames_items_list = sorted(list(frames_items_generator), key=lambda x: x.name)
 
+        logger.info(f"upload frames annotations")
         if annotations:
             for frame_item in frames_items_list:
                 frame_idx = int(frame_item.name.split('_')[-1].split('.')[0])
@@ -229,8 +238,8 @@ class ServiceRunner(dl.BaseServiceRunner):
                                 top=ann.top, left=ann.left, bottom=ann.bottom, right=ann.right, label=ann.label
                             )
                         )
-            frame_item.annotations.upload(builder)
-        return items
+                frame_item.annotations.upload(builder)
+        return frames_items_list
 
     def video_to_frames(self, item: dl.Item, context: dl.Context) -> List[dl.Item]:
         """
