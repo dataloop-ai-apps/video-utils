@@ -292,6 +292,8 @@ class ServiceRunner(dl.BaseServiceRunner):
             # Process each video split
             annotations = item.annotations.list()
             sub_videos_annotations_info = {}
+            # Create output directory for sub-videos
+            os.makedirs(os.path.join(self.local_output_folder, self.dl_output_folder), exist_ok=True)
             for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
                 sub_video_name, sub_video_annotations = self.write_video_segment(
                     cap=cap, annotations=annotations, start_frame=start_frame, end_frame=end_frame, i=i
@@ -325,8 +327,8 @@ if __name__ == "__main__":
 
     runner = ServiceRunner()
     context = dl.Context()
-    context.pipeline_id = "682069122afb795bc3c41d59"
-    context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
+    context.pipeline_id = "68483366590d2be8798fdf40"
+    context.node_id = "3265f7bd-a731-4f0e-acdb-e2aa3bd903d3"
     context.node.metadata["customNodeConfig"] = {
         "split_type": "out_length",
         "splitter_arg": 3,
@@ -335,4 +337,4 @@ if __name__ == "__main__":
     }
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.video_to_videos(item=dl.items.get(item_id="6823077f82b17749dc98a968"), context=context)
+    runner.video_to_videos(item=dl.items.get(item_id="6823064b3bf48f0d128ea593"), context=context)

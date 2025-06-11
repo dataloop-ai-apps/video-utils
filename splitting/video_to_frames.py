@@ -225,7 +225,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         )
         frames_items_list = sorted(list(frames_items_generator), key=lambda x: x.name)
 
-        logger.info(f"upload frames annotations")
+        logger.info("upload frames annotations")
         if annotations:
             for frame_item in frames_items_list:
                 frame_idx = int(frame_item.name.split('_')[-1].split('.')[0])
@@ -300,12 +300,12 @@ if __name__ == "__main__":
 
     runner = ServiceRunner()
     context = dl.Context()
-    context.pipeline_id = "682069122afb795bc3c41d59"
-    context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
+    context.pipeline_id = "68483366590d2be8798fdf40"
+    context.node_id = "3265f7bd-a731-4f0e-acdb-e2aa3bd903d3"
     context.node.metadata["customNodeConfig"] = {
-        "split_type": "frames_interval",
-        "splitter_arg": 1,
-        "output_dir": "try_video_to_frames_0206",
+        "split_type": "time_interval",
+        "splitter_arg": 5,
+        "output_dir": "split_5_sec_to_one_frame",
     }
 
     # context.node.metadata["customNodeConfig"] = {
@@ -315,4 +315,4 @@ if __name__ == "__main__":
     #     "min_interval": 0.5,
     #     "output_dir": "/tmp_embedding_similarity_sampling",
     # }
-    runner.video_to_frames(item=dl.items.get(item_id="682c5173b97066315716319d"), context=context)
+    runner.video_to_frames(item=dl.items.get(item_id="6823064b3bf48f0d128ea593"), context=context)

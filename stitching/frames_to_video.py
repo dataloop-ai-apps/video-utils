@@ -23,6 +23,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.tracker = None
         self.local_input_folder: str = ""
         self.local_output_folder: str = ""
+        self.dataset = None
 
     def set_config_params(self, node: dl.PipelineNode) -> None:
         """
@@ -157,14 +158,14 @@ if __name__ == "__main__":
     runner = ServiceRunner()
     context = dl.Context()
     context.pipeline_id = "68483366590d2be8798fdf40"
-    context.node_id = "3265f7bd-a731-4f0e-acdb-e2aa3bd903d3"
+    context.node_id = "73683df0-43f2-4347-81b4-2ca97ea5c3f8"
     context.node.metadata["customNodeConfig"] = {
         "fps": 20,
-        "output_dir": "tmp_stitching_frames_to_video_byte_track_2499",
-        "input_dir": "split_5_sec_to_one_frame",
+        "output_dir": "tmp_stitching_frames_to_video_deep_sort_2499_white_dancers",
+        "input_dir": "white_dancers_frames",
         "output_video_type": "webm",
-        "tracker": "ByteTrack",
+        "tracker": "DeepSORT",
     }
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.frames_to_vid(items=[dl.items.get(item_id="682a250fb188d7f0a74d53ed")], context=context)
+    runner.frames_to_vid(items=[dl.items.get(item_id="682a25d33ec9c74d876a4550")], context=context)
