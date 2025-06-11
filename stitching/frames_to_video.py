@@ -57,10 +57,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         if self.dl_input_dir is not None and self.dl_input_dir.strip():
             logger.info(f"input_dir: {self.dl_input_dir}")
             print(f"input_dir: {self.dl_input_dir}")
-            filters = dl.Filters(resource=dl.FiltersResource.ITEM, field='dir', values=("/" + self.dl_input_dir))
+            filters = dl.Filters(field='dir', values="/" + self.dl_input_dir)
             filters.sort_by(field='name')
-            # items = dataset.items.get_all_items(filters=filters)
-            items = list(self.dataset.items.list(filters=filters).all())
+            items = self.dataset.items.get_all_items(filters=filters)
             logger.info(f"get_input_items number of items: {len(items)}")
             print(f"get_input_items number of items: {len(items)}")
         if not items or len(items) == 0:
@@ -129,7 +128,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         items = self.get_input_items(items)
         # cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
         images_files = self.dataset.items.download(local_path=self.local_input_folder, items=items)
-        images_files = sorted(images_files, reverse=True)  # Sort filenames in descending order
+        images_files = sorted(images_files, reverse=False)  # Sort filenames in descending order
         cv_frames = [cv2.imread(img_path) for img_path in images_files]
         video_item = self.stitch_and_upload(cv_frames)
         builder = video_item.annotations.builder()
@@ -161,8 +160,8 @@ if __name__ == "__main__":
     context.node_id = "73683df0-43f2-4347-81b4-2ca97ea5c3f8"
     context.node.metadata["customNodeConfig"] = {
         "fps": 20,
-        "output_dir": "tmp_stitching_frames_to_video_deep_sort_2499_white_dancers",
-        "input_dir": "white_dancers_frames",
+        "output_dir": "tmp_22332887",
+        "input_dir": "split_5_sec_to_one_frame",
         "output_video_type": "webm",
         "tracker": "DeepSORT",
     }

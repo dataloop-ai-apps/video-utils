@@ -166,9 +166,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         logger.info(f"received items length: {len(items)}")
         if self.dl_input_dir is not None and self.dl_input_dir.strip():
             logger.info(f"input_dir: {self.dl_input_dir}")
-            filters = dl.Filters(resource=dl.FiltersResource.ITEM, field='dir', values=("/" + self.dl_input_dir))
+            filters = dl.Filters(field='dir', values="/" + self.dl_input_dir)
             filters.sort_by(field='name')
-            items = list(self.dataset.items.list(filters=filters).all())
+            items = self.dataset.items.get_all_items(filters=filters)
         if not items or len(items) == 0:
             logger.error("No images match to merge")
             return []
@@ -261,7 +261,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         is_same_split = ServiceRunner.is_items_from_same_split(items)
         logger.info(f"is_same_split: {is_same_split}")
         # input_files = [item.download(local_path=self.local_input_folder) for item in items]
-        input_files = sorted(self.dataset.items.download(local_path=self.local_input_folder, items=items), reverse=True)
+        input_files = sorted(
+            self.dataset.items.download(local_path=self.local_input_folder, items=items), reverse=False
+        )
         logger.info(f"input_files length: {len(input_files)}")
         # Create a VideoWriter object to write the merged video to a file
         writer, output_video_path, fps = self.get_video_writer(input_files[0], items[0], is_same_split)
@@ -279,7 +281,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         # Release the VideoWriter object
         writer.release()
 
-        video_item = self.dataset.items.upload(local_path=output_video_path, remote_path=self.dl_output_folder)
+        video_item = self.dataset.items.upload(local_path=output_video_path, remote_path="/" + self.dl_output_folder)
         video_item.fps = fps
         video_item.update()
         logger.info("uploading annotations to video")
@@ -297,11 +299,11 @@ if __name__ == "__main__":
     dl.login_api_key(api_key=api_key)
     runner = ServiceRunner()
     context = dl.Context()
-    context.pipeline_id = "682069122afb795bc3c41d59"
-    context.node_id = "bd1dc151-6067-4197-85aa-1b65394e2077"
+    context.pipeline_id = "68483366590d2be8798fdf40"
+    context.node_id = "73683df0-43f2-4347-81b4-2ca97ea5c3f8"
     context.node.metadata["customNodeConfig"] = {
-        "output_dir": "/videos_to_video_2805_29",
-        "input_dir": "/merge_videos_testcase",
+        "output_dir": "tmp_2llk333333",
+        "input_dir": "white_dancers_frames",
         "tracker": "ByteTrack",
     }
 
