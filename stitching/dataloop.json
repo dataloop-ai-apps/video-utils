@@ -230,8 +230,8 @@
             "description": "frames to video tool",
             "input": [
               {
-                "type": "Item[]",
-                "name": "items"
+                "type": "Item",
+                "name": "item"
               }
             ],
             "output": [
@@ -256,8 +256,8 @@
             "description": "videos to video tool",
             "input": [
               {
-                "type": "Item[]",
-                "name": "items"
+                "type": "Item",
+                "name": "item"
               }
             ],
             "output": [

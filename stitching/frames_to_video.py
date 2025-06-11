@@ -39,34 +39,24 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.trackerName = node.metadata['customNodeConfig']['tracker']
         logger.info(f"customNodeConfig: {node.metadata['customNodeConfig']}")
 
-    def get_input_items(self, items: List[dl.Item]) -> List[dl.Item]:
+    def get_input_items(self) -> List[dl.Item]:
         """
-        Gets input items either from provided list or from remote directory.
-        If input_dir is specified, fetches items from that remote directory.
-        Otherwise uses the provided items list.
-
-        Args:
-            items: List of input items
+        Gets input items from remote directory if input_dir is specified.
+        Otherwise returns the provided item in a list.
 
         Returns:
             List[dl.Item]: Filtered and sorted list of items
         """
-        items = sorted(items, key=lambda x: x.name)
-        logger.info(f"received items length: {len(items)}")
-        print(f"received items length: {len(items)}")
-        if self.dl_input_dir is not None and self.dl_input_dir.strip():
-            logger.info(f"input_dir: {self.dl_input_dir}")
-            print(f"input_dir: {self.dl_input_dir}")
-            filters = dl.Filters(field='dir', values="/" + self.dl_input_dir)
-            filters.sort_by(field='name')
-            items = self.dataset.items.get_all_items(filters=filters)
-            logger.info(f"get_input_items number of items: {len(items)}")
-            print(f"get_input_items number of items: {len(items)}")
-        if not items or len(items) == 0:
-            logger.error("No images match to merge")
-            return []
-        # TODO : check if there a batch download
+        logger.info(f"input_dir: {self.dl_input_dir}")
+        print(f"input_dir: {self.dl_input_dir}")
+        filters = dl.Filters(field='dir', values="/" + self.dl_input_dir)
+        filters.sort_by(field='name')
+        items = self.dataset.items.get_all_items(filters=filters)
         logger.info(f"get_input_items number of items: {len(items)}")
+        print(f"get_input_items number of items: {len(items)}")
+        if not items or len(items) == 0:
+            logger.error("No images found in specified directory")
+            return []
         return items
 
     def stitch_and_upload(self, cv_frames: List[np.ndarray]) -> dl.Item:
@@ -105,7 +95,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             if writer is not None:
                 writer.release()
 
-    def frames_to_vid(self, items: List[dl.Item], context: dl.Context) -> dl.Item:
+    def frames_to_vid(self, item: dl.Item, context: dl.Context) -> dl.Item:
         """
         Converts a sequence of frames into a video with optional object tracking.
 
@@ -120,12 +110,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         logger.info('Running service Frames To Video - Demo1')
 
         self.set_config_params(context.node)
-        self.dataset = items[0].dataset
+        self.dataset = item.dataset
         logger.info(f"dataset: {self.dataset.name}")
         self.local_input_folder = tempfile.mkdtemp(suffix="_input")
         self.local_output_folder = tempfile.mkdtemp(suffix="_output")
 
-        items = self.get_input_items(items)
+        items = self.get_input_items()
         # cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
         images_files = self.dataset.items.download(local_path=self.local_input_folder, items=items)
         images_files = sorted(images_files, reverse=False)  # Sort filenames in descending order
@@ -167,4 +157,4 @@ if __name__ == "__main__":
     }
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.frames_to_vid(items=[dl.items.get(item_id="682a25d33ec9c74d876a4550")], context=context)
+    runner.frames_to_vid(item=dl.items.get(item_id="682a25d33ec9c74d876a4550"), context=context)

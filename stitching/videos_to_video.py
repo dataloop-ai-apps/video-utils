@@ -150,29 +150,24 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         return merged_video_annotations, merged_video_frames
 
-    def get_input_items(self, items: List[dl.Item]) -> List[dl.Item]:
+    def get_input_items(self) -> List[dl.Item]:
         """
-        Gets input items either from provided list or from remote directory.
-        If input_dir is specified, fetches items from that remote directory.
-        Otherwise uses the provided items list.
-
-        Args:
-            items: List of input items
+        Gets input items from remote directory if input_dir is specified.
+        Otherwise returns the provided item in a list.
 
         Returns:
             List[dl.Item]: Filtered and sorted list of items
         """
-        items = sorted(items, key=lambda x: x.name)
-        logger.info(f"received items length: {len(items)}")
-        if self.dl_input_dir is not None and self.dl_input_dir.strip():
-            logger.info(f"input_dir: {self.dl_input_dir}")
-            filters = dl.Filters(field='dir', values="/" + self.dl_input_dir)
-            filters.sort_by(field='name')
-            items = self.dataset.items.get_all_items(filters=filters)
-        if not items or len(items) == 0:
-            logger.error("No images match to merge")
-            return []
+        logger.info(f"input_dir: {self.dl_input_dir}")
+        print(f"input_dir: {self.dl_input_dir}")
+        filters = dl.Filters(field='dir', values="/" + self.dl_input_dir)
+        filters.sort_by(field='name')
+        items = self.dataset.items.get_all_items(filters=filters)
         logger.info(f"get_input_items number of items: {len(items)}")
+        print(f"get_input_items number of items: {len(items)}")
+        if not items or len(items) == 0:
+            logger.error("No images found in specified directory")
+            return []
         return items
 
     def set_config_params(self, node: dl.PipelineNode):
@@ -236,31 +231,30 @@ class ServiceRunner(dl.BaseServiceRunner):
         writer = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
         return writer, output_video_path, fps
 
-    def videos_to_video(self, items: List[dl.Item], context: dl.Context):
+    def videos_to_video(self, item: dl.Item, context: dl.Context):
         """
-        Merges multiple videos into a single video with annotations.
+        Merges a video with its annotations.
 
         Args:
-            items: List of input video items
+            item: Input video item
             context: Pipeline context containing configuration
 
         Returns:
-            dl.Item: The merged video item
+            dl.Item: The processed video item
         """
         self.set_config_params(context.node)
-        self.dataset = items[0].dataset
+        self.dataset = item.dataset
         logger.info(f"dataset: {self.dataset.name}")
         self.local_input_folder = tempfile.mkdtemp(suffix="_input")
         self.local_output_folder = tempfile.mkdtemp(suffix="_output")
 
-        items = self.get_input_items(items)
+        items = self.get_input_items()
         if not items or len(items) == 0:
             logger.error("No videos match to merge")
             return
 
         is_same_split = ServiceRunner.is_items_from_same_split(items)
         logger.info(f"is_same_split: {is_same_split}")
-        # input_files = [item.download(local_path=self.local_input_folder) for item in items]
         input_files = sorted(
             self.dataset.items.download(local_path=self.local_input_folder, items=items), reverse=False
         )
@@ -329,4 +323,4 @@ if __name__ == "__main__":
     # pip install 'git+https://github.com/cocodataset/cocoapi.git#subdirectory=PythonAPI'
     # pip install cython_bbox
 
-    runner.videos_to_video(items=[dl.items.get(item_id="682c716f3bf48ff6189a3e57")], context=context)
+    runner.videos_to_video(item=dl.items.get(item_id="682c716f3bf48ff6189a3e57"), context=context)
