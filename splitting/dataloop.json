@@ -1,5 +1,5 @@
 {
-  "displayName": "[Video Utils] - Split - Demo",
+  "displayName": "Generate",
   "name": "video-utils-split-demo",
   "description": "Video Utils - Splitting is a collection of functions for video manipulation. The package includes functions for video splitting, video to videos splitting, and smart subsampling.",
   "version": "1.1.12",

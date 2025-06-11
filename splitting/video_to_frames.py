@@ -305,7 +305,7 @@ if __name__ == "__main__":
     context.node.metadata["customNodeConfig"] = {
         "split_type": "frames_interval",
         "splitter_arg": 1,
-        "output_dir": "/try_video_to_frames_0206",
+        "output_dir": "try_video_to_frames_0206",
     }
 
     # context.node.metadata["customNodeConfig"] = {

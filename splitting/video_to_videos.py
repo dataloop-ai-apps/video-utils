@@ -330,7 +330,7 @@ if __name__ == "__main__":
     context.node.metadata["customNodeConfig"] = {
         "split_type": "out_length",
         "splitter_arg": 3,
-        "output_dir": "/3_sec_videos_2",
+        "output_dir": "3_sec_videos_2",
         "n_overlap": 0,
     }
 

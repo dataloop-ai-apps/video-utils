@@ -123,6 +123,7 @@
               "name": "fps",
               "title": "FPS",
               "props": {
+                "title": true,
                 "type": "number",
                 "default": 20
               },

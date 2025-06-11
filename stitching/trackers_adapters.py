@@ -9,6 +9,35 @@ from trackers.deep_sort_pytorch.deep_sort.deep_sort import DeepSort
 from trackers.ByteTrack.yolox.tracker.byte_tracker import BYTETracker
 
 
+class TrackerConfig:
+    """Configuration class for all tracker parameters.
+
+    This class centralizes all configuration parameters used by different trackers.
+
+    Args:
+        min_box_area (float): Minimum area threshold for bounding boxes. Boxes smaller
+            than this will be filtered out.
+        track_thresh (float): Detection confidence threshold for tracking.
+        track_buffer (int): Number of frames to keep track of lost objects.
+        match_thresh (float): IoU threshold for matching detections to tracks.
+        mot20 (bool): Whether to use MOT20 evaluation metrics.
+    """
+
+    def __init__(
+        self,
+        min_box_area: float = 0,
+        track_thresh: float = 0.5,
+        track_buffer: int = 30,
+        match_thresh: float = 0.8,
+        mot20: bool = False,
+    ):
+        self.min_box_area = min_box_area
+        self.track_thresh = track_thresh
+        self.track_buffer = track_buffer
+        self.match_thresh = match_thresh
+        self.mot20 = mot20
+
+
 class BaseTracker:
     """Base class for object tracking implementations.
 
@@ -16,26 +45,25 @@ class BaseTracker:
     including annotation handling and box size filtering.
 
     Args:
-        min_box_area (float): Minimum area threshold for bounding boxes. Boxes smaller
-            than this will be filtered out.
+        config (TrackerConfig): Configuration object containing all tracker parameters
         annotations_builder (dl.AnnotationBuilder, optional): Dataloop annotation builder
             instance for creating annotations. Defaults to None.
 
     Attributes:
-        min_box_area (float): Minimum box area threshold
+        config (TrackerConfig): Configuration object containing all tracker parameters
         label_to_id_map (dict): Maps label strings to numeric IDs
         id_to_label_map (dict): Maps numeric IDs back to label strings
         annotations_builder (dl.AnnotationBuilder): Builder for creating annotations
     """
 
-    def __init__(self, min_box_area: float, annotations_builder: Optional[dl.AnnotationCollection] = None) -> None:
-        """Initialize base tracker with minimum box area and optional annotation builder.
+    def __init__(self, annotations_builder: dl.AnnotationCollection, config: TrackerConfig = TrackerConfig()) -> None:
+        """Initialize base tracker with configuration and optional annotation builder.
 
         Args:
-            min_box_area (float): Minimum area threshold for bounding boxes
-            annotations_builder (dl.AnnotationBuilder, optional): Dataloop annotation builder
+            annotations_builder (dl.AnnotationBuilder): Dataloop annotation builder
+            config (TrackerConfig): Configuration object containing all tracker parameters
         """
-        self.min_box_area = min_box_area
+        self.config = config
         self.label_to_id_map = {}
         self.id_to_label_map = {}
         self.annotations_builder = annotations_builder
@@ -83,7 +111,7 @@ class BaseTracker:
             object_id (int): Unique object ID
             label (str, optional): Class label string
         """
-        if box_size <= self.min_box_area:
+        if box_size <= self.config.min_box_area:
             return
 
         if fn == 0:
@@ -129,10 +157,14 @@ class ByteTrackTracker(BaseTracker):
         iou = interArea / float(boxAArea + boxBArea - interArea + 1e-6)
         return iou
 
-    def __init__(self, annotations_builder: dl.AnnotationCollection, frame_rate: float) -> None:
-        super().__init__(min_box_area=0, annotations_builder=annotations_builder)
-        opts = argparse.Namespace(track_thresh=0.5, track_buffer=30, match_thresh=0.8, mot20=False)
-        self.tracker = BYTETracker(args=opts, frame_rate=frame_rate)
+    def __init__(
+        self,
+        annotations_builder: dl.AnnotationCollection,
+        frame_rate: float = 20,
+        config: TrackerConfig = TrackerConfig(),
+    ) -> None:
+        super().__init__(annotations_builder=annotations_builder, config=config)
+        self.tracker = BYTETracker(args=config, frame_rate=frame_rate)
 
     def update(
         self, frame: np.ndarray, fn: int, frame_annotations: List[dl.Annotation]
@@ -200,8 +232,8 @@ class ByteTrackTracker(BaseTracker):
 
 
 class DeepSORTTracker(BaseTracker):
-    def __init__(self, annotations_builder: dl.AnnotationCollection) -> None:
-        super().__init__(min_box_area=0, annotations_builder=annotations_builder)
+    def __init__(self, annotations_builder: dl.AnnotationCollection, config: TrackerConfig = TrackerConfig()) -> None:
+        super().__init__(annotations_builder=annotations_builder, config=config)
         model_path = os.path.join(os.path.dirname(__file__), 'deep_sort_checkpoint', 'ckpt.t7')
         if not os.path.exists(model_path):
             model_path = '/trackers/deep_sort_pytorch_ckpt/ckpt.t7'
