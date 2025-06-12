@@ -1,8 +1,8 @@
 {
-  "displayName": "Generate",
-  "name": "video-utils-split-demo",
+  "displayName": "[Video Utils] - Splitting - Demo",
+  "name": "video-utils-splitting-demo",
   "description": "Video Utils - Splitting is a collection of functions for video manipulation. The package includes functions for video splitting, video to videos splitting, and smart subsampling.",
-  "version": "1.1.12",
+  "version": "1.1.23",
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
@@ -85,7 +85,10 @@
               "name": "splitter_arg",
               "title": "Number of Splits/Time Interval/Frames Interval",
               "props": {
+                "title": true,
                 "type": "number",
+                "required": true,
+                "placeholder": "Insert splitter argument",
                 "default": 2
               },
               "rules": [
