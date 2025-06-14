@@ -8,7 +8,7 @@ from typing import List
 import cv2
 import dtlpy as dl
 from dotenv import load_dotenv
-from stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker
+from stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker,TrackerConfig
 
 logger = logging.getLogger('video-utils.videos_to_video')
 
@@ -192,6 +192,13 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.dl_output_folder = node.metadata['customNodeConfig']['output_dir']
         self.dl_input_dir = node.metadata['customNodeConfig']['input_dir']
         self.trackerName = node.metadata['customNodeConfig']['tracker']
+        self.trackers_config = TrackerConfig(
+            min_box_area=node.metadata['customNodeConfig']['min_box_area'],
+            track_thresh=node.metadata['customNodeConfig']['track_thresh'],
+            track_buffer=node.metadata['customNodeConfig']['track_buffer'],
+            match_thresh=node.metadata['customNodeConfig']['match_thresh'],
+        )
+        logger.info(f"customNodeConfig: {node.metadata['customNodeConfig']}")
 
     def upload_annotations(self, video_item, merged_video_annotations, merged_video_frames):
         """
@@ -203,9 +210,9 @@ class ServiceRunner(dl.BaseServiceRunner):
             merged_video_frames: List of video frames
         """
         if self.trackerName == "ByteTrack":
-            tracker = ByteTrackTracker(annotations_builder=video_item.annotations.builder(), frame_rate=video_item.fps)
+            tracker = ByteTrackTracker(annotations_builder=video_item.annotations.builder(), frame_rate=video_item.fps,config=self.trackers_config)
         elif self.trackerName == "DeepSORT":
-            tracker = DeepSORTTracker(annotations_builder=video_item.annotations.builder())
+            tracker = DeepSORTTracker(annotations_builder=video_item.annotations.builder(),config=self.trackers_config)
         else:
             raise ValueError(f"Invalid tracker: {self.trackerName}")
         for i, (frame, frame_annotations) in enumerate(zip(merged_video_frames, merged_video_annotations)):
@@ -311,6 +318,10 @@ if __name__ == "__main__":
         "output_dir": "tmp_2llk333333",
         "input_dir": "white_dancers_frames",
         "tracker": "ByteTrack",
+        "min_box_area": 5000,
+        "track_thresh": 0.1,
+        "track_buffer": 30,
+        "match_thresh": 0.8,
     }
 
     # export PYTHONPATH=/app/BoT_SORT

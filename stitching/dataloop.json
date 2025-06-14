@@ -125,7 +125,76 @@
               "props": {
                 "title": true,
                 "type": "number",
-                "default": 20
+                "default": 20,
+                "placeholder": "Insert FPS"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "min_box_area",
+              "title": "Minimum Box Area",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 10,
+                "placeholder": "Minimum Tracked Box Area"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "track_thresh",
+              "title": "Minimum confidence score for detections to be tracked",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 0.5,
+                "placeholder": "Insert Minimum confidence"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "track_buffer",
+              "title": "Max frames a track can go unmatched before being removed",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 30,
+                "placeholder": "Insert Max track buffer"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "match_thresh",
+              "title": "Minimum similarity score to link a detection to an existing track",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 0.8,
+                "placeholder": "Insert Minimum similarity"
               },
               "rules": [
                 {

@@ -19,12 +19,11 @@ class TrackerConfig:
         track_thresh (float): Detection confidence threshold for tracking.
         track_buffer (int): Number of frames to keep track of lost objects.
         match_thresh (float): IoU threshold for matching detections to tracks.
-        mot20 (bool): Whether to use MOT20 evaluation metrics.
     """
 
     def __init__(
         self,
-        min_box_area: float = 5000,
+        min_box_area: float = 0,
         track_thresh: float = 0.1,
         track_buffer: int = 30,
         match_thresh: float = 0.8,
@@ -34,7 +33,7 @@ class TrackerConfig:
         self.track_thresh = track_thresh
         self.track_buffer = track_buffer
         self.match_thresh = match_thresh
-        self.mot20 = mot20
+        self.mot20 = False
 
 
 class BaseTracker:

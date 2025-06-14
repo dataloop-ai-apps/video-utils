@@ -8,19 +8,9 @@ import cv2
 import dtlpy as dl
 import numpy as np
 from dotenv import load_dotenv
+from trackers_adapters import ByteTrackTracker, DeepSORTTracker,TrackerConfig
 
 logger = logging.getLogger('video-utils.frames_to_vid')
-
-import os
-from typing import Optional, List, Tuple
-import numpy as np
-import torch
-import dtlpy as dl
-
-from trackers.deep_sort_pytorch.deep_sort.deep_sort import DeepSort
-from trackers.ByteTrack.yolox.tracker.byte_tracker import BYTETracker
-
-
 
 class ServiceRunner(dl.BaseServiceRunner):
     def __init__(self):
@@ -46,6 +36,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.output_video_type = node.metadata['customNodeConfig']['output_video_type']
         self.dl_input_dir = node.metadata['customNodeConfig']['input_dir']
         self.trackerName = node.metadata['customNodeConfig']['tracker']
+        self.trackers_config = TrackerConfig(
+            min_box_area=node.metadata['customNodeConfig']['min_box_area'],
+            track_thresh=node.metadata['customNodeConfig']['track_thresh'],
+            track_buffer=node.metadata['customNodeConfig']['track_buffer'],
+            match_thresh=node.metadata['customNodeConfig']['match_thresh'],
+        )
         logger.info(f"customNodeConfig: {node.metadata['customNodeConfig']}")
 
     def get_input_items(self, item: dl.Item) -> List[dl.Item]:
@@ -144,9 +140,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         video_item = self.stitch_and_upload(cv_frames)
         builder = video_item.annotations.builder()
         if self.trackerName == "ByteTrack":
-            self.tracker = ByteTrackTracker(annotations_builder=builder, frame_rate=self.fps)
+            self.tracker = ByteTrackTracker(annotations_builder=builder, frame_rate=self.fps,config=self.trackers_config)
         elif self.trackerName == "DeepSORT":
-            self.tracker = DeepSORTTracker(annotations_builder=builder)
+            self.tracker = DeepSORTTracker(annotations_builder=builder,config=self.trackers_config)
         else:
             raise ValueError(f"Invalid tracker name: {self.trackerName}")
         logger.info("Tracking frames")
