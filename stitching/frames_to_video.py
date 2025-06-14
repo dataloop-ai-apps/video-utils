@@ -8,9 +8,10 @@ import cv2
 import dtlpy as dl
 import numpy as np
 from dotenv import load_dotenv
-from stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker,TrackerConfig
+from stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker, TrackerConfig
 
 logger = logging.getLogger('video-utils.frames_to_vid')
+
 
 class ServiceRunner(dl.BaseServiceRunner):
     def __init__(self):
@@ -56,15 +57,15 @@ class ServiceRunner(dl.BaseServiceRunner):
         """
         logger.info(f"input_dir: {self.dl_input_dir}")
         input_dir = self.dl_input_dir if self.dl_input_dir != "" else os.path.dirname(item.filename)
-        filters = dl.Filters(field='dir', values="/" +  input_dir.lstrip('/'))
+        filters = dl.Filters(field='dir', values="/" + input_dir.lstrip('/'))
         # if origin video name is set on the received item, then use it to filter the frames
-        original_video_name = item.metadata.get('origin_video_name', None)  
+        original_video_name = item.metadata.get('origin_video_name', None)
         if original_video_name is not None:
-            filters.add(field='metadata.origin_video_name',values=original_video_name)
+            filters.add(field='metadata.origin_video_name', values=original_video_name)
         # if created_time is set on the received item, then use it to filter the frames
         created_time = item.metadata.get('created_time', None)
         if created_time is not None:
-            filters.add(field='metadata.created_time',values=created_time)
+            filters.add(field='metadata.created_time', values=created_time)
 
         filters.sort_by(field='name')
         items = self.dataset.items.get_all_items(filters=filters)
@@ -101,7 +102,9 @@ class ServiceRunner(dl.BaseServiceRunner):
             # Release the VideoWriter object
             writer.release()
             logger.info(f"Uploading video to dataset")
-            video_item = self.dataset.items.upload(local_path=output_video_path, remote_path="/" + self.dl_output_dir.lstrip('/'))
+            video_item = self.dataset.items.upload(
+                local_path=output_video_path, remote_path="/" + self.dl_output_dir.lstrip('/')
+            )
             video_item.fps = self.fps
             video_item.update()
             return video_item
@@ -139,9 +142,11 @@ class ServiceRunner(dl.BaseServiceRunner):
         video_item = self.stitch_and_upload(cv_frames)
         builder = video_item.annotations.builder()
         if self.trackerName == "ByteTrack":
-            self.tracker = ByteTrackTracker(annotations_builder=builder, frame_rate=self.fps,config=self.trackers_config)
+            self.tracker = ByteTrackTracker(
+                annotations_builder=builder, frame_rate=self.fps, config=self.trackers_config
+            )
         elif self.trackerName == "DeepSORT":
-            self.tracker = DeepSORTTracker(annotations_builder=builder,config=self.trackers_config)
+            self.tracker = DeepSORTTracker(annotations_builder=builder, config=self.trackers_config)
         else:
             raise ValueError(f"Invalid tracker name: {self.trackerName}")
         logger.info("Tracking frames")
@@ -151,30 +156,3 @@ class ServiceRunner(dl.BaseServiceRunner):
         logger.info("Uploading annotations to video")
         video_item.annotations.upload(annotations=builder)
         return video_item
-
-
-if __name__ == "__main__":
-    if dl.token_expired():
-        dl.login()
-
-    load_dotenv()
-    api_key = os.getenv('DATALOOP_API_KEY')
-    dl.login_api_key(api_key=api_key)
-    runner = ServiceRunner()
-    context = dl.Context()
-    context.pipeline_id = "6849efbdb087b0a9ac0829b8"
-    context.node_id = "71fb867d-e4c2-450c-878c-74431b68c45a"
-    context.node.metadata["customNodeConfig"] = {
-        "fps": 20,
-        "output_dir": "tmp_input/ssss",
-        "input_dir": "",
-        "output_video_type": "webm",
-        "tracker": "ByteTrack",
-        "min_box_area": 5000,
-        "track_thresh": 0.1,
-        "track_buffer": 30,
-        "match_thresh": 0.8,
-    }
-
-    # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.frames_to_vid(item=dl.items.get(item_id="684d3ba7cf795e7643caa44c"), context=context)

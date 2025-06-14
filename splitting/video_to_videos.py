@@ -216,7 +216,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         logger.info(f"Uploading sub videos to {self.dl_output_folder}")
         sub_videos_items = item.dataset.items.upload(
             local_path=self.frames_dir,
-            remote_path="/"+os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
+            remote_path="/" + os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
             item_metadata={
                 "origin_video_name": f"{self.input_base_name}.{self.video_type}",
                 "time": datetime.datetime.now().isoformat(),
@@ -293,7 +293,9 @@ class ServiceRunner(dl.BaseServiceRunner):
             annotations = item.annotations.list()
             sub_videos_annotations_info = {}
             # Create output directory for sub-videos
-            self.frames_dir = os.path.join(self.local_output_folder, os.path.basename(self.dl_output_folder.rstrip('/')))
+            self.frames_dir = os.path.join(
+                self.local_output_folder, os.path.basename(self.dl_output_folder.rstrip('/'))
+            )
             os.makedirs(self.frames_dir)
             for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
                 sub_video_name, sub_video_annotations = self.write_video_segment(
@@ -311,31 +313,3 @@ class ServiceRunner(dl.BaseServiceRunner):
             if cap is not None:
                 cap.release()
                 logger.info("Released video capture resources")
-
-
-if __name__ == "__main__":
-    use_rc_env = False
-
-    if dl.token_expired():
-        dl.login()
-
-    if use_rc_env:
-        dl.setenv('rc')
-    else:
-        dl.setenv('prod')
-    if dl.token_expired():
-        dl.login()
-
-    runner = ServiceRunner()
-    context = dl.Context()
-    context.pipeline_id = "684d6bc5b3b4e5eb3373ccda"
-    context.node_id = "10712bc1-2514-4425-abab-9535d1158375"
-    context.node.metadata["customNodeConfig"] = {
-        "split_type": "out_length",
-        "splitter_arg": 3,
-        "output_dir": "/tmp5445",
-        "n_overlap": 0,
-    }
-
-    # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.video_to_videos(item=dl.items.get(item_id="684a91f4553c906730ece6fe"), context=context)

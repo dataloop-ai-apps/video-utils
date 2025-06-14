@@ -8,7 +8,7 @@ from typing import List
 import cv2
 import dtlpy as dl
 from dotenv import load_dotenv
-from app.stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker,TrackerConfig
+from app.stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker, TrackerConfig
 
 logger = logging.getLogger('video-utils.videos_to_video')
 
@@ -161,22 +161,20 @@ class ServiceRunner(dl.BaseServiceRunner):
             List[dl.Item]: List of frame items sorted by name
         """
         logger.info(f"input_dir: {self.dl_input_dir}")
-        print(f"input_dir: {self.dl_input_dir}")
         input_dir = self.dl_input_dir if self.dl_input_dir != "" else os.path.dirname(item.filename)
-        filters = dl.Filters(field='dir', values="/" +  input_dir.lstrip('/'))
+        filters = dl.Filters(field='dir', values="/" + input_dir.lstrip('/'))
         # if origin video name is set on the received item, then use it to filter the frames
-        original_video_name = item.metadata.get('origin_video_name', None)  
+        original_video_name = item.metadata.get('origin_video_name', None)
         if original_video_name is not None:
-            filters.add(field='metadata.origin_video_name',values=original_video_name)
+            filters.add(field='metadata.origin_video_name', values=original_video_name)
         # if created_time is set on the received item, then use it to filter the frames
         created_time = item.metadata.get('created_time', None)
         if created_time is not None:
-            filters.add(field='metadata.created_time',values=created_time)
+            filters.add(field='metadata.created_time', values=created_time)
 
         filters.sort_by(field='name')
         items = self.dataset.items.get_all_items(filters=filters)
         logger.info(f"get_input_items number of items: {len(items)}")
-        print(f"get_input_items number of items: {len(items)}")
         if not items or len(items) == 0:
             logger.error("No images found in specified directory")
             return []
@@ -210,9 +208,13 @@ class ServiceRunner(dl.BaseServiceRunner):
             merged_video_frames: List of video frames
         """
         if self.trackerName == "ByteTrack":
-            tracker = ByteTrackTracker(annotations_builder=video_item.annotations.builder(), frame_rate=video_item.fps,config=self.trackers_config)
+            tracker = ByteTrackTracker(
+                annotations_builder=video_item.annotations.builder(),
+                frame_rate=video_item.fps,
+                config=self.trackers_config,
+            )
         elif self.trackerName == "DeepSORT":
-            tracker = DeepSORTTracker(annotations_builder=video_item.annotations.builder(),config=self.trackers_config)
+            tracker = DeepSORTTracker(annotations_builder=video_item.annotations.builder(), config=self.trackers_config)
         else:
             raise ValueError(f"Invalid tracker: {self.trackerName}")
         for i, (frame, frame_annotations) in enumerate(zip(merged_video_frames, merged_video_annotations)):
@@ -294,56 +296,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         # Release the VideoWriter object
         writer.release()
 
-        video_item = self.dataset.items.upload(local_path=output_video_path, remote_path="/" + self.dl_output_dir.lstrip('/'))
+        video_item = self.dataset.items.upload(
+            local_path=output_video_path, remote_path="/" + self.dl_output_dir.lstrip('/')
+        )
         video_item.fps = fps
         video_item.update()
         logger.info("uploading annotations to video")
         self.upload_annotations(video_item, merged_video_annotations, merged_video_frames)
 
         return video_item
-
-
-if __name__ == "__main__":
-    if dl.token_expired():
-        dl.login()
-
-    load_dotenv()
-    api_key = os.getenv('DATALOOP_API_KEY')
-    dl.login_api_key(api_key=api_key)
-    runner = ServiceRunner()
-    context = dl.Context()
-    context.pipeline_id = "68483366590d2be8798fdf40"
-    context.node_id = "73683df0-43f2-4347-81b4-2ca97ea5c3f8"
-    context.node.metadata["customNodeConfig"] = {
-        "output_dir": "tmp_2llk333333",
-        "input_dir": "white_dancers_frames",
-        "tracker": "ByteTrack",
-        "min_box_area": 5000,
-        "track_thresh": 0.1,
-        "track_buffer": 30,
-        "match_thresh": 0.8,
-    }
-
-    # export PYTHONPATH=/app/BoT_SORT
-
-    #    16  python app/tmp.py
-
-    #    17  docker ps
-
-    #    18  exit
-
-    #    19  python app/stitching/frames_to_video.py
-
-    #    20  export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-
-    # export CUDA_HOME=/usr/local/cuda-11.8
-    # export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-    # export PYTHONPATH=/app/BoT_SORT
-
-    # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-
-    # pip install cython
-    # pip install 'git+https://github.com/cocodataset/cocoapi.git#subdirectory=PythonAPI'
-    # pip install cython_bbox
-
-    runner.videos_to_video(item=dl.items.get(item_id="682c716f3bf48ff6189a3e57"), context=context)

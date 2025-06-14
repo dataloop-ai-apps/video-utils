@@ -42,8 +42,4 @@ USER 1000
 
 WORKDIR /
 
-#TODO remove this
-RUN pip install dotenv
-RUN pip install dtlpy
-
 

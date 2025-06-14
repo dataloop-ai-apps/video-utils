@@ -212,14 +212,13 @@ class ServiceRunner(dl.BaseServiceRunner):
             cv2.imwrite(frame_path, frame)
 
         logger.info(f"uploading frames to {self.dl_output_folder}")
-        print(f"uploading frames to {self.dl_output_folder}")
         # batch upload
         frames_items_generator = item_dataset.items.upload(
             local_path=frames_dir,
-            remote_path="/"+os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
+            remote_path="/" + os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
             item_metadata={
                 "origin_video_name": f"{os.path.basename(item.filename)}",
-                "created_time": datetime.datetime.now().isoformat()
+                "created_time": datetime.datetime.now().isoformat(),
             },
         )
         frames_items_list = sorted(list(frames_items_generator), key=lambda x: x.name)
@@ -287,31 +286,3 @@ class ServiceRunner(dl.BaseServiceRunner):
                 cap.release()
 
         return items
-
-
-if __name__ == "__main__":
-
-    load_dotenv()
-    api_key = os.getenv('DATALOOP_API_KEY')
-    dl.login_api_key(api_key=api_key)
-    if dl.token_expired():
-        dl.login()
-
-    runner = ServiceRunner()
-    context = dl.Context()
-    context.pipeline_id = "6849efbdb087b0a9ac0829b8"
-    context.node_id = "a171e719-1e54-4fb9-8b43-fec1e862b50a"
-    context.node.metadata["customNodeConfig"] = {
-        "split_type": "time_interval",
-        "splitter_arg": 3,
-        "output_dir": "/tmp/meta_with_data",
-    }
-
-    # context.node.metadata["customNodeConfig"] = {
-    #     "split_type": "embedding_similarity_sampling",
-    #     "window_size": 9,
-    #     "threshold": 0.5,
-    #     "min_interval": 0.5,
-    #     "output_dir": "/tmp_embedding_similarity_sampling",
-    # }
-    runner.video_to_frames(item=dl.items.get(item_id="6823078182b177d8b698a9b2"), context=context)
