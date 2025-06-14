@@ -150,17 +150,29 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         return merged_video_annotations, merged_video_frames
 
-    def get_input_items(self) -> List[dl.Item]:
+    def get_input_items(self, item: dl.Item) -> List[dl.Item]:
         """
-        Gets input items from remote directory if input_dir is specified.
-        Otherwise returns the provided item in a list.
+        Gets list of input frame items from specified directory.
+
+        Args:
+            item (dl.Item): Reference item used to determine dataset and directory
 
         Returns:
-            List[dl.Item]: Filtered and sorted list of items
+            List[dl.Item]: List of frame items sorted by name
         """
         logger.info(f"input_dir: {self.dl_input_dir}")
         print(f"input_dir: {self.dl_input_dir}")
-        filters = dl.Filters(field='dir', values="/" + self.dl_input_dir)
+        input_dir = self.dl_input_dir if self.dl_input_dir != "" else os.path.dirname(item.filename)
+        filters = dl.Filters(field='dir', values="/" +  input_dir.lstrip('/'))
+        # if origin video name is set on the received item, then use it to filter the frames
+        original_video_name = item.metadata.get('origin_video_name', None)  
+        if original_video_name is not None:
+            filters.add(field='metadata.origin_video_name',values=original_video_name)
+        # if created_time is set on the received item, then use it to filter the frames
+        created_time = item.metadata.get('created_time', None)
+        if created_time is not None:
+            filters.add(field='metadata.created_time',values=created_time)
+
         filters.sort_by(field='name')
         items = self.dataset.items.get_all_items(filters=filters)
         logger.info(f"get_input_items number of items: {len(items)}")
@@ -248,7 +260,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.local_input_folder = tempfile.mkdtemp(suffix="_input")
         self.local_output_folder = tempfile.mkdtemp(suffix="_output")
 
-        items = self.get_input_items()
+        items = self.get_input_items(item)
         if not items or len(items) == 0:
             logger.error("No videos match to merge")
             return
@@ -275,7 +287,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         # Release the VideoWriter object
         writer.release()
 
-        video_item = self.dataset.items.upload(local_path=output_video_path, remote_path="/" + self.dl_output_folder)
+        video_item = self.dataset.items.upload(local_path=output_video_path, remote_path="/" + self.dl_output_dir.lstrip('/'))
         video_item.fps = fps
         video_item.update()
         logger.info("uploading annotations to video")

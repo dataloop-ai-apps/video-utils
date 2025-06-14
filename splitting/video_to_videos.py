@@ -166,7 +166,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             Tuple of (sub video filename, annotations list)
         """
         sub_video_name = f"{self.input_base_name}_{str(i).zfill(self.max_fc_len)}_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{self.video_type}"
-        output_video = os.path.join(self.local_output_folder, self.dl_output_folder, sub_video_name)
+        output_video = os.path.join(self.frames_dir, sub_video_name)
         sub_video_annotations = []
 
         writer = cv2.VideoWriter(output_video, self.fourcc, self.fps, self.frame_size)
@@ -215,8 +215,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         """
         logger.info(f"Uploading sub videos to {self.dl_output_folder}")
         sub_videos_items = item.dataset.items.upload(
-            local_path=os.path.join(self.local_output_folder, self.dl_output_folder),
-            remote_path='/',
+            local_path=self.frames_dir,
+            remote_path="/"+os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
             item_metadata={
                 "origin_video_name": f"{self.input_base_name}.{self.video_type}",
                 "time": datetime.datetime.now().isoformat(),
@@ -293,7 +293,8 @@ class ServiceRunner(dl.BaseServiceRunner):
             annotations = item.annotations.list()
             sub_videos_annotations_info = {}
             # Create output directory for sub-videos
-            os.makedirs(os.path.join(self.local_output_folder, self.dl_output_folder), exist_ok=True)
+            self.frames_dir = os.path.join(self.local_output_folder, os.path.basename(self.dl_output_folder.rstrip('/')))
+            os.makedirs(self.frames_dir)
             for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
                 sub_video_name, sub_video_annotations = self.write_video_segment(
                     cap=cap, annotations=annotations, start_frame=start_frame, end_frame=end_frame, i=i
@@ -327,12 +328,12 @@ if __name__ == "__main__":
 
     runner = ServiceRunner()
     context = dl.Context()
-    context.pipeline_id = "68483366590d2be8798fdf40"
-    context.node_id = "3265f7bd-a731-4f0e-acdb-e2aa3bd903d3"
+    context.pipeline_id = "6849efbdb087b0a9ac0829b8"
+    context.node_id = "a171e719-1e54-4fb9-8b43-fec1e862b50a"
     context.node.metadata["customNodeConfig"] = {
         "split_type": "out_length",
         "splitter_arg": 3,
-        "output_dir": "3_sec_videos_2",
+        "output_dir": "/tmp5445",
         "n_overlap": 0,
     }
 
