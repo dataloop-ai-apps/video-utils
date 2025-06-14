@@ -8,7 +8,7 @@ from typing import List
 import cv2
 import dtlpy as dl
 from dotenv import load_dotenv
-from stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker,TrackerConfig
+from app.stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker,TrackerConfig
 
 logger = logging.getLogger('video-utils.videos_to_video')
 

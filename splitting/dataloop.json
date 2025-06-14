@@ -1,8 +1,8 @@
 {
-  "displayName": "[Video Utils] - Splitting - Demo",
-  "name": "video-utils-splitting-demo",
+  "displayName": "[Video Utils] - Splitting - Demo 2",
+  "name": "video-utils-splitting-demo-2",
   "description": "Video Utils - Splitting is a collection of functions for video manipulation. The package includes functions for video splitting, video to videos splitting, and smart subsampling.",
-  "version": "1.1.23",
+  "version": "1.1.29",
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
@@ -15,14 +15,13 @@
     ],
     "License": "Apache 2.0"
   },
-  
   "scope": "project",
   "components": {
     "pipelineNodes": [
       {
         "scope": "node",
         "name": "video-to-frames",
-        "displayName": "Video to Frames",
+        "displayName": "Video to Frames Demo",
         "description": "Split video into frames by number of splits, time interval, or frames interval.",
         "invoke": {
           "type": "function",
@@ -53,7 +52,7 @@
                     "value": "frames_interval"
                   }
                 ],
-                "default": "num_splits"
+                "default": "frames_interval"
               },
               "rules": [
                 {
@@ -64,14 +63,14 @@
               "widget": "dl-select"
             },
             {
-              "name": "output_dir",
-              "title": "Dataset Output Directory",
+              "name": "splitter_arg",
+              "title": "Number of Splits/Time Interval/Frames Interval",
               "props": {
                 "title": true,
-                "type": "string",
-                "default": "output",
+                "type": "number",
                 "required": true,
-                "placeholder": "Insert output directory"
+                "placeholder": "Insert splitter argument",
+                "default": 1
               },
               "rules": [
                 {
@@ -82,14 +81,14 @@
               "widget": "dl-input"
             },
             {
-              "name": "splitter_arg",
-              "title": "Number of Splits/Time Interval/Frames Interval",
+              "name": "output_dir",
+              "title": "Dataset Output Directory",
               "props": {
                 "title": true,
-                "type": "number",
+                "type": "string",
+                "default": "output",
                 "required": true,
-                "placeholder": "Insert splitter argument",
-                "default": 2
+                "placeholder": "Insert output directory"
               },
               "rules": [
                 {
@@ -224,7 +223,7 @@
       {
         "scope": "node",
         "name": "video-to-videos",
-        "displayName": "Video to Videos",
+        "displayName": "Video to Videos Demo",
         "description": "Split video into multiple videos by number of splits, time interval, or frames interval.",
         "invoke": {
           "type": "function",
@@ -290,7 +289,7 @@
                 "title": true,
                 "type": "number",
                 "default": 2,
-                "required": true                
+                "required": true
               },
               "rules": [
                 {

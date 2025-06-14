@@ -119,7 +119,7 @@ class BaseTracker:
         if label is None:
             label = self.id_to_label_map.get(label_id, None)
         if label is None:
-            print(f"label is None for object_id: {object_id}")
+            # print(f"label is None for object_id: {object_id}")
             return
 
         if self.annotations_builder is not None:

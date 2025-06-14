@@ -328,8 +328,8 @@ if __name__ == "__main__":
 
     runner = ServiceRunner()
     context = dl.Context()
-    context.pipeline_id = "6849efbdb087b0a9ac0829b8"
-    context.node_id = "a171e719-1e54-4fb9-8b43-fec1e862b50a"
+    context.pipeline_id = "684d6bc5b3b4e5eb3373ccda"
+    context.node_id = "10712bc1-2514-4425-abab-9535d1158375"
     context.node.metadata["customNodeConfig"] = {
         "split_type": "out_length",
         "splitter_arg": 3,
@@ -338,4 +338,4 @@ if __name__ == "__main__":
     }
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.video_to_videos(item=dl.items.get(item_id="6823064b3bf48f0d128ea593"), context=context)
+    runner.video_to_videos(item=dl.items.get(item_id="684a91f4553c906730ece6fe"), context=context)

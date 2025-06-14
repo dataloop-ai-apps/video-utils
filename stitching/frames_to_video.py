@@ -8,7 +8,7 @@ import cv2
 import dtlpy as dl
 import numpy as np
 from dotenv import load_dotenv
-from trackers_adapters import ByteTrackTracker, DeepSORTTracker,TrackerConfig
+from stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker,TrackerConfig
 
 logger = logging.getLogger('video-utils.frames_to_vid')
 
@@ -55,7 +55,6 @@ class ServiceRunner(dl.BaseServiceRunner):
             List[dl.Item]: List of frame items sorted by name
         """
         logger.info(f"input_dir: {self.dl_input_dir}")
-        print(f"input_dir: {self.dl_input_dir}")
         input_dir = self.dl_input_dir if self.dl_input_dir != "" else os.path.dirname(item.filename)
         filters = dl.Filters(field='dir', values="/" +  input_dir.lstrip('/'))
         # if origin video name is set on the received item, then use it to filter the frames
@@ -70,7 +69,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         filters.sort_by(field='name')
         items = self.dataset.items.get_all_items(filters=filters)
         logger.info(f"get_input_items number of items: {len(items)}")
-        print(f"get_input_items number of items: {len(items)}")
         if not items or len(items) == 0:
             logger.error("No images found in specified directory")
             return []
@@ -136,6 +134,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         # cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
         images_files = self.dataset.items.download(local_path=self.local_input_folder, items=items)
         images_files = sorted(images_files, reverse=False)  # Sort filenames in descending order
+        logger.info("convert to cv frames")
         cv_frames = [cv2.imread(img_path) for img_path in images_files]
         video_item = self.stitch_and_upload(cv_frames)
         builder = video_item.annotations.builder()
@@ -171,6 +170,10 @@ if __name__ == "__main__":
         "input_dir": "",
         "output_video_type": "webm",
         "tracker": "ByteTrack",
+        "min_box_area": 5000,
+        "track_thresh": 0.1,
+        "track_buffer": 30,
+        "match_thresh": 0.8,
     }
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}

@@ -1,8 +1,8 @@
 {
-  "displayName": "[Video Utils] - Stitching - Demo",
-  "name": "video-utils-stitching-demo",
+  "displayName": "[Video Utils] - Stitching - Demo 2",
+  "name": "video-utils-stitching-demo-2",
   "description": "Video Utils - Stitching is a collection of tools for video manipulation. It includes tools for merging frames into a video and merging videos into a single video.",
-  "version": "1.1.19",
+  "version": "1.1.29",
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
@@ -21,7 +21,7 @@
       {
         "scope": "node",
         "name": "frames-to-video",
-        "displayName": "Frames to Video Merge",
+        "displayName": "Frames to Video Merge Demo",
         "description": "Merge frames into a video",
         "invoke": {
           "type": "function",
@@ -48,7 +48,7 @@
                     "value": "mp4"
                   }
                 ],
-                "default": "webm"
+                "default": "Webm"
               },
               "rules": [
                 {
@@ -210,7 +210,7 @@
       {
         "scope": "node",
         "name": "videos-to-video",
-        "displayName": "Videos to Video Merge",
+        "displayName": "Videos to Video Merge Demo",
         "description": "Merge videos into a single video",
         "invoke": {
           "type": "function",
@@ -310,7 +310,7 @@
               }
             ],
             "displayIcon": "qa-sampling",
-            "displayName": "Frames to Video Merge"
+            "displayName": "Frames to Video Merge Demo"
           }
         ]
       },
