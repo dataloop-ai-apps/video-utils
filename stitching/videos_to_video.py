@@ -7,7 +7,6 @@ from typing import List
 
 import cv2
 import dtlpy as dl
-from dotenv import load_dotenv
 from app.stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker, TrackerConfig
 
 logger = logging.getLogger('video-utils.videos_to_video')
@@ -15,11 +14,9 @@ logger = logging.getLogger('video-utils.videos_to_video')
 
 class ServiceRunner(dl.BaseServiceRunner):
     def __init__(self):
-        self.dl_output_folder = None
+        self.dl_output_dir = None
         self.dl_input_dir = None
         self.trackerName = None
-        self.local_input_folder = None
-        self.local_output_folder = None
         self.dataset = None
 
     @staticmethod
@@ -187,7 +184,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         Args:
             node: Pipeline node containing configuration
         """
-        self.dl_output_folder = node.metadata['customNodeConfig']['output_dir']
+        self.dl_output_dir = node.metadata['customNodeConfig']['output_dir']
         self.dl_input_dir = node.metadata['customNodeConfig']['input_dir']
         self.trackerName = node.metadata['customNodeConfig']['tracker']
         self.trackers_config = TrackerConfig(
@@ -221,7 +218,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             tracker.update(frame, i, frame_annotations)
         video_item.annotations.upload(annotations=tracker.annotations_builder)
 
-    def get_video_writer(self, first_input_file, first_item, is_same_split):
+    def get_video_writer(self, first_input_file, first_item, is_same_split, local_output_folder):
         """
         Creates and configures video writer based on first input video.
 
@@ -229,6 +226,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             first_input_file: Path to first input video file
             first_item: First Dataloop video item
             is_same_split: Whether videos are from same split
+            local_output_folder: Local directory to save the output video
 
         Returns:
             tuple: VideoWriter object, output path, and fps
@@ -243,7 +241,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         logger.info(f"frame_size: {frame_size}")
         cap.release()
         output_video_path = os.path.join(
-            self.local_output_folder,
+            local_output_folder,
             f"{first_item.metadata['origin_video_name'].replace(f'.{video_type}', '') + '_' if is_same_split else ''}merge_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{video_type}",
         )
         logger.info(f"output_video_path: {output_video_path}")
@@ -266,8 +264,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.set_config_params(context.node)
         self.dataset = item.dataset
         logger.info(f"dataset: {self.dataset.name}")
-        self.local_input_folder = tempfile.mkdtemp(suffix="_input")
-        self.local_output_folder = tempfile.mkdtemp(suffix="_output")
+
+        local_input_folder = tempfile.mkdtemp(suffix="_input")
+        local_output_folder = tempfile.mkdtemp(suffix="_output")
 
         items = self.get_input_items(item)
         if not items or len(items) == 0:
@@ -276,12 +275,12 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         is_same_split = ServiceRunner.is_items_from_same_split(items)
         logger.info(f"is_same_split: {is_same_split}")
-        input_files = sorted(
-            self.dataset.items.download(local_path=self.local_input_folder, items=items), reverse=False
-        )
+        input_files = sorted(self.dataset.items.download(local_path=local_input_folder, items=items), reverse=False)
         logger.info(f"input_files length: {len(input_files)}")
         # Create a VideoWriter object to write the merged video to a file
-        writer, output_video_path, fps = self.get_video_writer(input_files[0], items[0], is_same_split)
+        writer, output_video_path, fps = self.get_video_writer(
+            input_files[0], items[0], is_same_split, local_output_folder
+        )
 
         if is_same_split:
             logger.info("merge by sub videos intervals")

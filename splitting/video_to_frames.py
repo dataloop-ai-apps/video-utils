@@ -6,7 +6,6 @@ from typing import List, Dict, Any
 
 import cv2
 import dtlpy as dl
-from dotenv import load_dotenv
 from skimage.metrics import structural_similarity
 from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.applications.resnet50 import preprocess_input
@@ -26,7 +25,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.threshold = None
         self.min_interval = None
         self.window_size = None
-        self.temp_dir = None
 
     def get_new_items_metadata(self, item: dl.Item) -> Dict[str, Any]:
         """
@@ -196,7 +194,9 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         raise ValueError(f"Invalid split type: {self.split_type}")
 
-    def upload_frames(self, item: dl.Item, frames_list: List[int], cap: cv2.VideoCapture) -> List[dl.Item]:
+    def upload_frames(
+        self, item: dl.Item, frames_list: List[int], cap: cv2.VideoCapture, temp_dir: str
+    ) -> List[dl.Item]:
         """
         Upload extracted frames as new items with annotations.
 
@@ -204,6 +204,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             item: Input video item
             frames_list: List of frame indices to extract
             cap: OpenCV video capture object
+            temp_dir: Temporary directory path for storing frames
 
         Returns:
             List of uploaded frame items
@@ -214,7 +215,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         item_dataset = item.dataset
         annotations = item.annotations.list()
         logger.info(f"frames_dir: {self.dl_output_folder}")
-        frames_dir = os.path.join(self.temp_dir, os.path.basename(self.dl_output_folder.rstrip('/')))
+        frames_dir = os.path.join(temp_dir, os.path.basename(self.dl_output_folder.rstrip('/')))
         os.makedirs(frames_dir)
         for frame_idx in frames_list:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
@@ -280,16 +281,16 @@ class ServiceRunner(dl.BaseServiceRunner):
                 if self.split_type == 'structural_similarity_sampling':
                     self.window_size = node.metadata['customNodeConfig']['window_size']
 
-            self.temp_dir = tempfile.mkdtemp()
-            logger.info(f"start downloading video to tmp dir {self.temp_dir}")
-            input_video = item.download(local_path=self.temp_dir)
+            temp_dir = tempfile.mkdtemp()
+            logger.info(f"start downloading video to tmp dir {temp_dir}")
+            input_video = item.download(local_path=temp_dir)
             cap = cv2.VideoCapture(input_video)
             if not cap.isOpened():
                 raise RuntimeError("Failed to open video file")
 
             frames_list = self.get_frames_list(cap)
             logger.info(f"frames_list: {frames_list}")
-            items = self.upload_frames(item, frames_list, cap)
+            items = self.upload_frames(item, frames_list, cap, temp_dir)
 
         except Exception as e:
             logger.error(f"Error processing video: {str(e)}")

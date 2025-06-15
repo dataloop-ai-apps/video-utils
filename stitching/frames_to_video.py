@@ -7,7 +7,6 @@ from typing import List
 import cv2
 import dtlpy as dl
 import numpy as np
-from dotenv import load_dotenv
 from stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker, TrackerConfig
 
 logger = logging.getLogger('video-utils.frames_to_vid')
@@ -21,8 +20,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.dl_input_dir: str = ""
         self.trackerName: str = ""
         self.tracker = None
-        self.local_input_folder: str = ""
-        self.local_output_folder: str = ""
         self.dataset = None
 
     def set_config_params(self, node: dl.PipelineNode) -> None:
@@ -75,19 +72,19 @@ class ServiceRunner(dl.BaseServiceRunner):
             return []
         return items
 
-    def stitch_and_upload(self, cv_frames: List[np.ndarray]) -> dl.Item:
+    def stitch_and_upload(self, cv_frames: List[np.ndarray], local_output_folder: str) -> dl.Item:
         """
         Stitches frames into a video and uploads it to the dataset.
 
         Args:
-            dataset: Dataloop dataset to upload video to
             cv_frames: List of OpenCV frames to stitch together
+            local_output_folder (str): Local directory to save the output video
 
         Returns:
             dl.Item: The uploaded video item
         """
         output_video_path = os.path.join(
-            self.local_output_folder,
+            local_output_folder,
             f"merge_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{self.output_video_type}",
         )
         logger.info(f"Stitching frames into video at {output_video_path}")
@@ -130,16 +127,17 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.set_config_params(context.node)
         self.dataset = item.dataset
         logger.info(f"dataset: {self.dataset.name}")
-        self.local_input_folder = tempfile.mkdtemp(suffix="_input")
-        self.local_output_folder = tempfile.mkdtemp(suffix="_output")
+
+        local_input_folder = tempfile.mkdtemp(suffix="_input")
+        local_output_folder = tempfile.mkdtemp(suffix="_output")
 
         items = self.get_input_items(item)
         # cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
-        images_files = self.dataset.items.download(local_path=self.local_input_folder, items=items)
+        images_files = self.dataset.items.download(local_path=local_input_folder, items=items)
         images_files = sorted(images_files, reverse=False)  # Sort filenames in descending order
         logger.info("convert to cv frames")
         cv_frames = [cv2.imread(img_path) for img_path in images_files]
-        video_item = self.stitch_and_upload(cv_frames)
+        video_item = self.stitch_and_upload(cv_frames, local_output_folder)
         builder = video_item.annotations.builder()
         if self.trackerName == "ByteTrack":
             self.tracker = ByteTrackTracker(

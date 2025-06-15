@@ -23,9 +23,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.dl_output_folder = None
         self.splitter_arg = None
         self.n_overlap = None
-        self.local_input_folder = None
-        self.local_output_folder = None
-        self.frames_dir = None
 
     def get_new_items_metadata(self, item: dl.Item, sub_videos_intervals: List[List[int]]) -> Dict[str, Any]:
         """
@@ -168,7 +165,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         )
 
     def write_video_segment(
-        self, cap: cv2.VideoCapture, annotations: Any, start_frame: int, end_frame: int, i: int
+        self, cap: cv2.VideoCapture, annotations: Any, start_frame: int, end_frame: int, i: int, frames_dir: str
     ) -> Tuple[str, List[List[Any]]]:
         """
         Extract a segment from source video and collect its annotations.
@@ -179,12 +176,14 @@ class ServiceRunner(dl.BaseServiceRunner):
             start_frame: Starting frame index
             end_frame: Ending frame index
             i: Split index
+            frames_dir: Directory to save the output video
 
         Returns:
             Tuple of (sub video filename, annotations list)
         """
-        sub_video_name = f"{self.input_base_name}_{str(i).zfill(self.max_fc_len)}_{datetime.datetime.now().isoformat().replace('.', '').replace(':', '_')}.{self.video_type}"
-        output_video = os.path.join(self.frames_dir, sub_video_name)
+        sub_video_name = f"{self.input_base_name}_{str(i).zfill(self.max_fc_len)}.{self.video_type}"
+        output_video = os.path.join(frames_dir, sub_video_name)
+        logger.info(f"output_video: {output_video}")
         sub_video_annotations = []
 
         writer = cv2.VideoWriter(output_video, self.fourcc, self.fps, self.frame_size)
@@ -219,6 +218,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         item: dl.Item,
         sub_videos_annotations_info: Dict[str, List[List[Any]]],
         sub_videos_intervals: List[List[int]],
+        frames_dir: str,
     ) -> List[dl.Item]:
         """
         Upload sub videos and their annotations to the platform.
@@ -227,17 +227,20 @@ class ServiceRunner(dl.BaseServiceRunner):
             item: Source video item
             sub_videos_annotations_info: Dict mapping sub video names to their annotations
             sub_videos_intervals: List of frame intervals for each sub video
+            frames_dir: Directory containing the sub videos
 
         Returns:
             List of uploaded sub video items
         """
         logger.info(f"Uploading sub videos to {self.dl_output_folder}")
         item_metadata = self.get_new_items_metadata(item, sub_videos_intervals)
+        logger.info(f"uploading from {frames_dir} to {os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/')}")
         sub_videos_items = item.dataset.items.upload(
-            local_path=self.frames_dir,
+            local_path=frames_dir,
             remote_path="/" + os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
             item_metadata=item_metadata,
         )
+
         sub_videos_items = sorted(list(sub_videos_items), key=lambda x: x.name)
         logger.info("start uploading sub videos and annotations")
         for sub_video_item in sub_videos_items:
@@ -280,11 +283,11 @@ class ServiceRunner(dl.BaseServiceRunner):
         try:
             self.set_config_params(node=context.node)
 
-            self.local_input_folder = tempfile.mkdtemp(suffix="_input")
-            self.local_output_folder = tempfile.mkdtemp(suffix="_output")
+            local_input_folder = tempfile.mkdtemp(suffix="_input")
+            local_output_folder = tempfile.mkdtemp(suffix="_output")
 
-            logger.info(f"Downloading video to {self.local_input_folder}")
-            input_video = item.download(local_path=self.local_input_folder)
+            logger.info(f"Downloading video to {local_input_folder}")
+            input_video = item.download(local_path=local_input_folder)
 
             cap = cv2.VideoCapture(input_video)
             if not cap.isOpened():
@@ -309,18 +312,23 @@ class ServiceRunner(dl.BaseServiceRunner):
             annotations = item.annotations.list()
             sub_videos_annotations_info = {}
             # Create output directory for sub-videos
-            self.frames_dir = os.path.join(
-                self.local_output_folder, os.path.basename(self.dl_output_folder.rstrip('/'))
-            )
-            os.makedirs(self.frames_dir)
+            frames_dir = os.path.join(local_output_folder, os.path.basename(self.dl_output_folder.rstrip('/')))
+            os.makedirs(frames_dir)
             for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
                 sub_video_name, sub_video_annotations = self.write_video_segment(
-                    cap=cap, annotations=annotations, start_frame=start_frame, end_frame=end_frame, i=i
+                    cap=cap,
+                    annotations=annotations,
+                    start_frame=start_frame,
+                    end_frame=end_frame,
+                    i=i,
+                    frames_dir=frames_dir,
                 )
                 sub_videos_annotations_info[sub_video_name] = sub_video_annotations
 
             logger.info(f"Uploading sub videos and annotations to {self.dl_output_folder}")
-            items = self.upload_sub_videos_and_annotations(item, sub_videos_annotations_info, sub_videos_intervals)
+            items = self.upload_sub_videos_and_annotations(
+                item, sub_videos_annotations_info, sub_videos_intervals, frames_dir
+            )
         except Exception as e:
             logger.error(f"Error processing video: {str(e)}")
             raise
@@ -342,17 +350,16 @@ if __name__ == "__main__":
         dl.setenv('prod')
     if dl.token_expired():
         dl.login()
-    print()
     runner = ServiceRunner()
     context = dl.Context()
     context.pipeline_id = "684d6bc5b3b4e5eb3373ccda"
-    context.node_id = "10712bc1-2514-4425-abab-9535d1158375"
+    context.node_id = "8ca5c27a-1789-40a7-880c-b073197e0819"
     context.node.metadata["customNodeConfig"] = {
-        "split_type": "out_length",
-        "splitter_arg": 1,
-        "output_dir": "/one_second_video",
+        "split_type": "num_splits",
+        "splitter_arg": 2,
+        "output_dir": "/one_second_video_2",
         "n_overlap": 0,
     }
 
     # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.video_to_videos(item=dl.items.get(item_id="682c5173b97066315716319d"), context=context)
+    runner.video_to_videos(item=dl.items.get(item_id="684ea7f496f49580abfbb701"), context=context)
