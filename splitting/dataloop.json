@@ -2,7 +2,7 @@
   "displayName": "[Video Utils] - Splitting - Demo 2",
   "name": "video-utils-splitting-demo-2",
   "description": "Video Utils - Splitting is a collection of functions for video manipulation. The package includes functions for video splitting, video to videos splitting, and smart subsampling.",
-  "version": "1.1.29",
+  "version": "1.1.38",
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
@@ -297,6 +297,19 @@
                   "effect": "error"
                 }
               ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "n_overlap",
+              "title": "Number of overlapping frames between consecutive sub-videos",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 0,
+                "min": 0,
+                "step": 1,
+                "required": false
+              },
               "widget": "dl-input"
             }
           ]

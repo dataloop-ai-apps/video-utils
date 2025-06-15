@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 import datetime
-from typing import List
+from typing import List, Dict, Any
 
 import cv2
 import dtlpy as dl
@@ -27,6 +27,22 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.min_interval = None
         self.window_size = None
         self.temp_dir = None
+
+    def get_new_items_metadata(self, item: dl.Item) -> Dict[str, Any]:
+        """
+        Get metadata for new frame items.
+
+        Args:
+            item: Source video item
+
+        Returns:
+            Dict containing metadata for new items
+        """
+        received_org_name = item.metadata.get("origin_video_name", None)
+        received_time = item.metadata.get("time", None)
+        origin_video_name = os.path.basename(item.filename) if received_org_name is None else received_org_name
+        time = datetime.datetime.now().isoformat() if received_time is None else received_time
+        return {"origin_video_name": origin_video_name, "time": time}
 
     def get_embedding(self, frame: np.ndarray) -> np.ndarray:
         """
@@ -199,7 +215,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         annotations = item.annotations.list()
         logger.info(f"frames_dir: {self.dl_output_folder}")
         frames_dir = os.path.join(self.temp_dir, os.path.basename(self.dl_output_folder.rstrip('/')))
-        os.makedirs(frames_dir, exist_ok=True)
+        os.makedirs(frames_dir)
         for frame_idx in frames_list:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             success, frame = cap.read()
@@ -216,10 +232,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         frames_items_generator = item_dataset.items.upload(
             local_path=frames_dir,
             remote_path="/" + os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
-            item_metadata={
-                "origin_video_name": f"{os.path.basename(item.filename)}",
-                "created_time": datetime.datetime.now().isoformat(),
-            },
+            item_metadata=self.get_new_items_metadata(item),
         )
         frames_items_list = sorted(list(frames_items_generator), key=lambda x: x.name)
 

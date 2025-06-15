@@ -25,6 +25,24 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.n_overlap = None
         self.local_input_folder = None
         self.local_output_folder = None
+        self.frames_dir = None
+
+    def get_new_items_metadata(self, item: dl.Item, sub_videos_intervals: List[List[int]]) -> Dict[str, Any]:
+        """
+        Get metadata for new sub-video items.
+
+        Args:
+            item: Source video item
+            sub_videos_intervals: List of frame intervals for each sub video
+
+        Returns:
+            Dict containing metadata for new items
+        """
+        received_org_name = item.metadata.get("origin_video_name", None)
+        received_time = item.metadata.get("time", None)
+        origin_video_name = os.path.basename(item.filename) if received_org_name is None else received_org_name
+        time = datetime.datetime.now().isoformat() if received_time is None else received_time
+        return {"origin_video_name": origin_video_name, "time": time, "sub_videos_intervals": sub_videos_intervals}
 
     def get_sub_videos_intervals_by_num_frames(self, num_frames_per_split: Union[int, List[int]]) -> List[List[int]]:
         """
@@ -123,7 +141,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.split_type = node.metadata['customNodeConfig']['split_type']
         self.dl_output_folder = node.metadata['customNodeConfig']['output_dir']
         self.splitter_arg = node.metadata['customNodeConfig']['splitter_arg']
-        self.n_overlap = node.metadata['customNodeConfig']['n_overlap']
+        self.n_overlap = node.metadata['customNodeConfig'].get('n_overlap', 0)  # default to 0 if not provided
 
     def initialize_video_params(self, cap: cv2.VideoCapture, input_video: str) -> None:
         """
@@ -214,15 +232,13 @@ class ServiceRunner(dl.BaseServiceRunner):
             List of uploaded sub video items
         """
         logger.info(f"Uploading sub videos to {self.dl_output_folder}")
+        item_metadata = self.get_new_items_metadata(item, sub_videos_intervals)
         sub_videos_items = item.dataset.items.upload(
             local_path=self.frames_dir,
             remote_path="/" + os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
-            item_metadata={
-                "origin_video_name": f"{self.input_base_name}.{self.video_type}",
-                "time": datetime.datetime.now().isoformat(),
-                "sub_videos_intervals": sub_videos_intervals,
-            },
+            item_metadata=item_metadata,
         )
+        sub_videos_items = sorted(list(sub_videos_items), key=lambda x: x.name)
         logger.info("start uploading sub videos and annotations")
         for sub_video_item in sub_videos_items:
             sub_video_item.fps = item.fps
@@ -304,8 +320,7 @@ class ServiceRunner(dl.BaseServiceRunner):
                 sub_videos_annotations_info[sub_video_name] = sub_video_annotations
 
             logger.info(f"Uploading sub videos and annotations to {self.dl_output_folder}")
-            return self.upload_sub_videos_and_annotations(item, sub_videos_annotations_info, sub_videos_intervals)
-
+            items = self.upload_sub_videos_and_annotations(item, sub_videos_annotations_info, sub_videos_intervals)
         except Exception as e:
             logger.error(f"Error processing video: {str(e)}")
             raise
@@ -313,3 +328,31 @@ class ServiceRunner(dl.BaseServiceRunner):
             if cap is not None:
                 cap.release()
                 logger.info("Released video capture resources")
+        return items
+
+
+print("check")
+if __name__ == "__main__":
+    print("start")
+    use_rc_env = False
+
+    if use_rc_env:
+        dl.setenv('rc')
+    else:
+        dl.setenv('prod')
+    if dl.token_expired():
+        dl.login()
+    print()
+    runner = ServiceRunner()
+    context = dl.Context()
+    context.pipeline_id = "684d6bc5b3b4e5eb3373ccda"
+    context.node_id = "10712bc1-2514-4425-abab-9535d1158375"
+    context.node.metadata["customNodeConfig"] = {
+        "split_type": "out_length",
+        "splitter_arg": 1,
+        "output_dir": "/one_second_video",
+        "n_overlap": 0,
+    }
+
+    # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
+    runner.video_to_videos(item=dl.items.get(item_id="682c5173b97066315716319d"), context=context)
