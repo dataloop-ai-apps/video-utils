@@ -21,6 +21,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.trackerName: str = ""
         self.tracker = None
         self.dataset = None
+        self.trackers_config = None
 
     def set_config_params(self, node: dl.PipelineNode) -> None:
         """

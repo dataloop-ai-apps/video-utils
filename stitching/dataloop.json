@@ -2,7 +2,7 @@
   "displayName": "[Video Utils] - Stitching - Demo 2",
   "name": "video-utils-stitching-demo-2",
   "description": "Video Utils - Stitching is a collection of tools for video manipulation. It includes tools for merging frames into a video and merging videos into a single video.",
-  "version": "1.1.30",
+  "version": "1.1.33",
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
@@ -274,6 +274,74 @@
                 "default": "input",
                 "required": false,
                 "placeholder": "Insert input directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "min_box_area",
+              "title": "Minimum Box Area",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 10,
+                "placeholder": "Minimum Tracked Box Area"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "track_thresh",
+              "title": "Minimum confidence score for detections to be tracked",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 0.5,
+                "placeholder": "Insert Minimum confidence"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "track_buffer",
+              "title": "Max frames a track can go unmatched before being removed",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 30,
+                "placeholder": "Insert Max track buffer"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "match_thresh",
+              "title": "Minimum similarity score to link a detection to an existing track",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 0.8,
+                "placeholder": "Insert Minimum similarity"
               },
               "rules": [
                 {

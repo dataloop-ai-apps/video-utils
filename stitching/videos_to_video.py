@@ -7,7 +7,7 @@ from typing import List
 
 import cv2
 import dtlpy as dl
-from app.stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker, TrackerConfig
+from stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker, TrackerConfig
 
 logger = logging.getLogger('video-utils.videos_to_video')
 
@@ -18,6 +18,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.dl_input_dir = None
         self.trackerName = None
         self.dataset = None
+        self.trackers_config = None
 
     @staticmethod
     def clone_annotation(ann: dl.Annotation):

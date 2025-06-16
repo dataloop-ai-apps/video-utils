@@ -337,29 +337,3 @@ class ServiceRunner(dl.BaseServiceRunner):
                 cap.release()
                 logger.info("Released video capture resources")
         return items
-
-
-print("check")
-if __name__ == "__main__":
-    print("start")
-    use_rc_env = False
-
-    if use_rc_env:
-        dl.setenv('rc')
-    else:
-        dl.setenv('prod')
-    if dl.token_expired():
-        dl.login()
-    runner = ServiceRunner()
-    context = dl.Context()
-    context.pipeline_id = "684d6bc5b3b4e5eb3373ccda"
-    context.node_id = "8ca5c27a-1789-40a7-880c-b073197e0819"
-    context.node.metadata["customNodeConfig"] = {
-        "split_type": "num_splits",
-        "splitter_arg": 2,
-        "output_dir": "/one_second_video_2",
-        "n_overlap": 0,
-    }
-
-    # context.node.metadata["customNodeConfig"] = {"window_size": 7, "threshold": 0.13, "output_dir": "/testing_238"}
-    runner.video_to_videos(item=dl.items.get(item_id="684ea7f496f49580abfbb701"), context=context)
