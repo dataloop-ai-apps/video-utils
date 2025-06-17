@@ -169,14 +169,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         created_time = item.metadata.get('created_time', None)
         if created_time is not None:
             filters.add(field='metadata.created_time', values=created_time)
-
-        filters.sort_by(field='name')
         items = self.dataset.items.get_all_items(filters=filters)
         logger.info(f"get_input_items number of items: {len(items)}")
         if not items or len(items) == 0:
             logger.error("No images found in specified directory")
             return []
-        return items
+        return sorted(items, key=lambda x: x.name, reverse=False)
 
     def set_config_params(self, node: dl.PipelineNode):
         """
