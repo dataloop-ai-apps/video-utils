@@ -131,9 +131,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         local_output_folder = tempfile.mkdtemp(suffix="_output")
 
         items = self.get_input_items(item)
-        # cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
         self.dataset.items.download(local_path=local_input_folder, items=items)
-        images_files = [item.filename for item in items]
+        images_files = [os.path.join(local_input_folder, "items", item.filename.lstrip("/")) for item in items]
         logger.info("convert to cv frames")
         cv_frames = [cv2.imread(img_path) for img_path in images_files]
         video_item = self.stitch_and_upload(cv_frames, local_output_folder)

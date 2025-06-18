@@ -264,6 +264,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.dataset = item.dataset
         logger.info(f"dataset: {self.dataset.name}")
         local_output_folder = tempfile.mkdtemp(suffix="_output")
+        local_input_folder = tempfile.mkdtemp(suffix="_input")
 
         items = self.get_input_items(item)
         if not items or len(items) == 0:
@@ -272,7 +273,10 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         is_same_split = ServiceRunner.is_items_from_same_split(items)
         logger.info(f"is_same_split: {is_same_split}")
-        input_files = [item.filename for item in items]
+        #        images_files = [os.path.join(local_input_folder, "items", item.filename.lstrip("/")) for item in items]
+        logger.info(f"downloading items to {local_input_folder}")
+        self.dataset.items.download(local_path=local_input_folder, items=items)
+        input_files = [os.path.join(local_input_folder, "items", item.filename.lstrip("/")) for item in items]
         logger.info(f"input_files length: {len(input_files)}")
         # Create a VideoWriter object to write the merged video to a file
         writer, output_video_path, fps = self.get_video_writer(
