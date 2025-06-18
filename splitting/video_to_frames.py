@@ -235,6 +235,9 @@ class ServiceRunner(dl.BaseServiceRunner):
             remote_path="/" + os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
             item_metadata=self.get_new_items_metadata(item),
         )
+        # if only one item was uploaded, convert to list
+        if isinstance(frames_items_generator, dl.Item):
+            frames_items_generator = [frames_items_generator]
         frames_items_list = sorted(list(frames_items_generator), key=lambda x: x.name)
 
         # add index to frame items

@@ -243,6 +243,9 @@ class ServiceRunner(dl.BaseServiceRunner):
             remote_path="/" + os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
             item_metadata=item_metadata,
         )
+        # if only one item was uploaded, convert to list
+        if isinstance(sub_videos_items, dl.Item):
+            sub_videos_items = [sub_videos_items]
 
         sub_videos_items = sorted(list(sub_videos_items), key=lambda x: x.name)
 
