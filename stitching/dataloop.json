@@ -420,7 +420,7 @@
         "moduleName": "frames-to-video",
         "runtime": {
           "podType": "regular-xs",
-          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.1",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.2",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},
@@ -445,7 +445,7 @@
         "moduleName": "videos-to-video",
         "runtime": {
           "podType": "regular-xs",
-          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.1",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.2",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},
