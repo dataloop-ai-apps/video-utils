@@ -7,7 +7,7 @@ ENV CUDA_HOME=/usr/local/cuda-11.8
 ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y cmake && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y cmake curl && rm -rf /var/lib/apt/lists/*
 
 # Switch back to non-root user
 USER 1000
