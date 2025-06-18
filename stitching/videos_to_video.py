@@ -174,7 +174,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         if not items or len(items) == 0:
             logger.error("No images found in specified directory")
             return []
-        return sorted(items, key=lambda x: x.name, reverse=False)
+        return sorted(items, key=lambda x: x.metadata["splitting_sub_videos_index"], reverse=False)
 
     def set_config_params(self, node: dl.PipelineNode):
         """
@@ -263,8 +263,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.set_config_params(context.node)
         self.dataset = item.dataset
         logger.info(f"dataset: {self.dataset.name}")
-
-        local_input_folder = tempfile.mkdtemp(suffix="_input")
         local_output_folder = tempfile.mkdtemp(suffix="_output")
 
         items = self.get_input_items(item)
@@ -274,7 +272,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         is_same_split = ServiceRunner.is_items_from_same_split(items)
         logger.info(f"is_same_split: {is_same_split}")
-        input_files = sorted(self.dataset.items.download(local_path=local_input_folder, items=items), reverse=False)
+        input_files = [item.filename for item in items]
         logger.info(f"input_files length: {len(input_files)}")
         # Create a VideoWriter object to write the merged video to a file
         writer, output_video_path, fps = self.get_video_writer(

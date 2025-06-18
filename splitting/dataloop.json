@@ -38,6 +38,24 @@
         "configuration": {
           "fields": [
             {
+              "name": "output_dir",
+              "title": "Dataset Output Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "output",
+                "required": true,
+                "placeholder": "Insert output directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
               "name": "split_type",
               "title": "Split Type",
               "props": {
@@ -76,24 +94,6 @@
                 "required": true,
                 "placeholder": "Insert splitter argument",
                 "default": 1
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
-            },
-            {
-              "name": "output_dir",
-              "title": "Dataset Output Directory",
-              "props": {
-                "title": true,
-                "type": "string",
-                "default": "output",
-                "required": true,
-                "placeholder": "Insert output directory"
               },
               "rules": [
                 {
@@ -240,6 +240,24 @@
         "configuration": {
           "fields": [
             {
+              "name": "output_dir",
+              "title": "Output Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "output",
+                "required": true,
+                "placeholder": "Insert output directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
               "name": "split_type",
               "title": "Split Type",
               "props": {
@@ -268,24 +286,6 @@
                 }
               ],
               "widget": "dl-select"
-            },
-            {
-              "name": "output_dir",
-              "title": "Output Directory",
-              "props": {
-                "title": true,
-                "type": "string",
-                "default": "output",
-                "required": true,
-                "placeholder": "Insert output directory"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
             },
             {
               "name": "splitter_arg",

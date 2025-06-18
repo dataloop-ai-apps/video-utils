@@ -165,7 +165,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         )
 
     def write_video_segment(
-        self, cap: cv2.VideoCapture, annotations: Any, start_frame: int, end_frame: int, i: int, frames_dir: str
+        self, cap: cv2.VideoCapture, annotations: Any, start_frame: int, end_frame: int, i: int, sub_videos_dir: str
     ) -> Tuple[str, List[List[Any]]]:
         """
         Extract a segment from source video and collect its annotations.
@@ -176,13 +176,13 @@ class ServiceRunner(dl.BaseServiceRunner):
             start_frame: Starting frame index
             end_frame: Ending frame index
             i: Split index
-            frames_dir: Directory to save the output video
+            sub_videos_dir: Directory to save the output video
 
         Returns:
             Tuple of (sub video filename, annotations list)
         """
         sub_video_name = f"{self.input_base_name}_{str(i).zfill(self.max_fc_len)}.{self.video_type}"
-        output_video = os.path.join(frames_dir, sub_video_name)
+        output_video = os.path.join(sub_videos_dir, sub_video_name)
         logger.info(f"output_video: {output_video}")
         sub_video_annotations = []
 
@@ -218,7 +218,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         item: dl.Item,
         sub_videos_annotations_info: Dict[str, List[List[Any]]],
         sub_videos_intervals: List[List[int]],
-        frames_dir: str,
+        sub_videos_dir: str,
     ) -> List[dl.Item]:
         """
         Upload sub videos and their annotations to the platform.
@@ -227,21 +227,29 @@ class ServiceRunner(dl.BaseServiceRunner):
             item: Source video item
             sub_videos_annotations_info: Dict mapping sub video names to their annotations
             sub_videos_intervals: List of frame intervals for each sub video
-            frames_dir: Directory containing the sub videos
+            sub_videos_dir: Directory containing the sub videos
 
         Returns:
             List of uploaded sub video items
         """
         logger.info(f"Uploading sub videos to {self.dl_output_folder}")
         item_metadata = self.get_new_items_metadata(item, sub_videos_intervals)
-        logger.info(f"uploading from {frames_dir} to {os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/')}")
+        logger.info(
+            f"uploading from {sub_videos_dir} to {os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/')}"
+        )
         sub_videos_items = item.dataset.items.upload(
-            local_path=frames_dir,
+            local_path=sub_videos_dir,
             remote_path="/" + os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
             item_metadata=item_metadata,
         )
 
         sub_videos_items = sorted(list(sub_videos_items), key=lambda x: x.name)
+
+        # add index to sub videos items
+        for i, sub_video_item in enumerate(sub_videos_items):
+            sub_video_item.metadata["splitting_sub_videos_index"] = i
+            sub_video_item.update()
+
         logger.info("start uploading sub videos and annotations")
         for sub_video_item in sub_videos_items:
             sub_video_item.fps = item.fps
@@ -312,8 +320,8 @@ class ServiceRunner(dl.BaseServiceRunner):
             annotations = item.annotations.list()
             sub_videos_annotations_info = {}
             # Create output directory for sub-videos
-            frames_dir = os.path.join(local_output_folder, os.path.basename(self.dl_output_folder.rstrip('/')))
-            os.makedirs(frames_dir)
+            sub_videos_dir = os.path.join(local_output_folder, os.path.basename(self.dl_output_folder.rstrip('/')))
+            os.makedirs(sub_videos_dir)
             for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
                 sub_video_name, sub_video_annotations = self.write_video_segment(
                     cap=cap,
@@ -321,13 +329,13 @@ class ServiceRunner(dl.BaseServiceRunner):
                     start_frame=start_frame,
                     end_frame=end_frame,
                     i=i,
-                    frames_dir=frames_dir,
+                    sub_videos_dir=sub_videos_dir,
                 )
                 sub_videos_annotations_info[sub_video_name] = sub_video_annotations
 
             logger.info(f"Uploading sub videos and annotations to {self.dl_output_folder}")
             items = self.upload_sub_videos_and_annotations(
-                item, sub_videos_annotations_info, sub_videos_intervals, frames_dir
+                item, sub_videos_annotations_info, sub_videos_intervals, sub_videos_dir
             )
         except Exception as e:
             logger.error(f"Error processing video: {str(e)}")

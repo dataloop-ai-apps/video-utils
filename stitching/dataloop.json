@@ -38,6 +38,41 @@
         "configuration": {
           "fields": [
             {
+              "name": "input_dir",
+              "title": "Dataset Input Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "input",
+                "placeholder": "Insert input directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "output_dir",
+              "title": "Dataset Output Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "output",
+                "required": true,
+                "placeholder": "Insert output directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
               "name": "output_video_type",
               "title": "Output Video Type",
               "props": {
@@ -88,41 +123,6 @@
                 }
               ],
               "widget": "dl-select"
-            },
-            {
-              "name": "output_dir",
-              "title": "Dataset Output Directory",
-              "props": {
-                "title": true,
-                "type": "string",
-                "default": "output",
-                "required": true,
-                "placeholder": "Insert output directory"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
-            },
-            {
-              "name": "input_dir",
-              "title": "Dataset Input Directory",
-              "props": {
-                "title": true,
-                "type": "string",
-                "default": "input",
-                "placeholder": "Insert input directory"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
             },
             {
               "name": "fps",
@@ -227,6 +227,42 @@
         "configuration": {
           "fields": [
             {
+              "name": "input_dir",
+              "title": "Dataset Input Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "input",
+                "required": false,
+                "placeholder": "Insert input directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "output_dir",
+              "title": "Dataset Output Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "output",
+                "required": true,
+                "placeholder": "Insert output directory"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
               "name": "tracker",
               "title": "Tracker",
               "props": {
@@ -251,42 +287,6 @@
                 }
               ],
               "widget": "dl-select"
-            },
-            {
-              "name": "output_dir",
-              "title": "Dataset Output Directory",
-              "props": {
-                "title": true,
-                "type": "string",
-                "default": "output",
-                "required": true,
-                "placeholder": "Insert output directory"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
-            },
-            {
-              "name": "input_dir",
-              "title": "Dataset Input Directory",
-              "props": {
-                "title": true,
-                "type": "string",
-                "default": "input",
-                "required": false,
-                "placeholder": "Insert input directory"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-input"
             },
             {
               "name": "min_box_area",

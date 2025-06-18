@@ -237,6 +237,11 @@ class ServiceRunner(dl.BaseServiceRunner):
         )
         frames_items_list = sorted(list(frames_items_generator), key=lambda x: x.name)
 
+        # add index to frame items
+        for i, frame_item in enumerate(frames_items_list):
+            frame_item.metadata["splliting_frame_index"] = i
+            frame_item.update()
+
         logger.info("upload frames annotations")
         if annotations:
             for frame_item in frames_items_list:

@@ -22,12 +22,7 @@ class TrackerConfig:
     """
 
     def __init__(
-        self,
-        min_box_area: float = 0,
-        track_thresh: float = 0.1,
-        track_buffer: int = 30,
-        match_thresh: float = 0.8,
-        mot20: bool = False,
+        self, min_box_area: float = 0, track_thresh: float = 0.1, track_buffer: int = 30, match_thresh: float = 0.8
     ):
         self.min_box_area = min_box_area
         self.track_thresh = track_thresh

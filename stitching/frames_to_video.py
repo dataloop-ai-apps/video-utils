@@ -69,7 +69,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         if not items or len(items) == 0:
             logger.error("No images found in specified directory")
             return []
-        return sorted(items, key=lambda x: x.name, reverse=False)
+        return sorted(items, key=lambda x: x.metadata["splliting_frame_index"], reverse=False)
 
     def stitch_and_upload(self, cv_frames: List[np.ndarray], local_output_folder: str) -> dl.Item:
         """
@@ -132,8 +132,8 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         items = self.get_input_items(item)
         # cv_frames = [cv2.imread(item.download(local_path=self.local_input_folder)) for item in items]
-        images_files = self.dataset.items.download(local_path=local_input_folder, items=items)
-        images_files = sorted(images_files, reverse=False)  # Sort filenames in descending order
+        self.dataset.items.download(local_path=local_input_folder, items=items)
+        images_files = [item.filename for item in items]
         logger.info("convert to cv frames")
         cv_frames = [cv2.imread(img_path) for img_path in images_files]
         video_item = self.stitch_and_upload(cv_frames, local_output_folder)
