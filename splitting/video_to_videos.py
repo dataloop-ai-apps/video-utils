@@ -54,6 +54,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         assert self.n_overlap >= 0, "overlap must be greater than or equal to 0"
         sub_videos_intervals = []
         start_frame = 0
+        end_frame = 0
         if isinstance(num_frames_per_split, list):
             for num_frames in num_frames_per_split:
                 assert num_frames > 0, "number of frames per split must be greater then 0"
