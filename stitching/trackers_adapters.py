@@ -1,10 +1,8 @@
-import os
 from typing import Optional, List, Tuple
 import numpy as np
 import torch
 import dtlpy as dl
 
-from trackers.deep_sort_pytorch.deep_sort.deep_sort import DeepSort
 from trackers.ByteTrack.yolox.tracker.byte_tracker import BYTETracker
 
 
@@ -224,67 +222,3 @@ class ByteTrackTracker(BaseTracker):
         return self.annotations_builder
 
 
-class DeepSORTTracker(BaseTracker):
-    def __init__(self, annotations_builder: dl.AnnotationCollection, config: TrackerConfig = TrackerConfig()) -> None:
-        super().__init__(annotations_builder=annotations_builder, config=config)
-        model_path = os.path.join(os.path.dirname(__file__), 'deep_sort_checkpoint', 'ckpt.t7')
-        if not os.path.exists(model_path):
-            model_path = '/trackers/deep_sort_pytorch_ckpt/ckpt.t7'
-            if not os.path.exists(model_path):
-                raise FileNotFoundError(
-                    "DeepSORT model checkpoint not found at either 'deep_sort_checkpoint/ckpt.t7' or '/trackers/ckpt.t7'"
-                )
-        self.tracker = DeepSort(model_path=model_path, use_cuda=torch.cuda.is_available())
-
-    def update(
-        self, frame: np.ndarray, fn: int, frame_annotations: List[dl.Annotation]
-    ) -> Optional[dl.AnnotationCollection]:
-        """Update the tracker with a new frame and its annotations.
-
-        Args:
-            frame: The current video frame to process
-            fn (int): Frame number
-            frame_annotations: List of annotations for the current frame
-
-        Returns:
-            dl.AnnotationCollection: Updated annotations collection with tracking results
-        """
-        dets = []
-        confs = []
-        clss = []
-
-        for ann in frame_annotations:
-            if ann.type != 'box':
-                continue
-            x1, y1, x2, y2 = ann.left, ann.top, ann.right, ann.bottom
-            w, h = x2 - x1, y2 - y1
-            cx, cy = x1 + w / 2.0, y1 + h / 2.0
-            dets.append([cx, cy, w, h])
-            try:
-                confs.append(ann.metadata['user']['model']['confidence'])
-            except KeyError:
-                confs.append(1.0)
-            label_id = self.label_to_id_map.get(ann.label, None)
-            if label_id is None:
-                label_id = len(self.label_to_id_map)
-                self.id_to_label_map[label_id] = ann.label
-                self.label_to_id_map[ann.label] = label_id
-            clss.append(label_id)
-
-        if len(dets) == 0:
-            return self.annotations_builder
-
-        dets = np.array(dets)
-        confs = np.array(confs)
-        clss = np.array(clss)
-
-        outputs, _ = self.tracker.update(dets, confs, clss, frame)
-
-        for t in outputs:
-            x1, y1, x2, y2, tcls, tid = t
-            box_size = (x2 - x1) * (y2 - y1)
-            self.add_annotation(
-                box_size=box_size, fn=fn, label_id=int(tcls), top=y1, left=x1, bottom=y2, right=x2, object_id=int(tid)
-            )
-
-        return self.annotations_builder

@@ -99,32 +99,6 @@
               "widget": "dl-select"
             },
             {
-              "name": "tracker",
-              "title": "Tracker",
-              "props": {
-                "type": "string",
-                "required": true,
-                "options": [
-                  {
-                    "label": "ByteTrack",
-                    "value": "ByteTrack"
-                  },
-                  {
-                    "label": "DeepSORT",
-                    "value": "DeepSORT"
-                  }
-                ],
-                "default": "ByteTrack"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-select"
-            },
-            {
               "name": "fps",
               "title": "FPS",
               "props": {
@@ -261,32 +235,6 @@
                 }
               ],
               "widget": "dl-input"
-            },
-            {
-              "name": "tracker",
-              "title": "Tracker",
-              "props": {
-                "type": "string",
-                "required": true,
-                "options": [
-                  {
-                    "label": "ByteTrack",
-                    "value": "ByteTrack"
-                  },
-                  {
-                    "label": "DeepSORT",
-                    "value": "DeepSORT"
-                  }
-                ],
-                "default": "ByteTrack"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-select"
             },
             {
               "name": "min_box_area",

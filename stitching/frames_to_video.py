@@ -7,7 +7,7 @@ from typing import List
 import cv2
 import dtlpy as dl
 import numpy as np
-from stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker, TrackerConfig
+from stitching.trackers_adapters import ByteTrackTracker, TrackerConfig
 
 logger = logging.getLogger('video-utils.frames_to_vid')
 
@@ -18,7 +18,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.dl_output_dir: str = ""
         self.output_video_type: str = ""
         self.dl_input_dir: str = ""
-        self.trackerName: str = ""
         self.tracker = None
         self.dataset = None
         self.trackers_config = None
@@ -34,7 +33,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         self.dl_output_dir = node.metadata['customNodeConfig']['output_dir']
         self.output_video_type = node.metadata['customNodeConfig']['output_video_type']
         self.dl_input_dir = node.metadata['customNodeConfig']['input_dir']
-        self.trackerName = node.metadata['customNodeConfig']['tracker']
         self.trackers_config = TrackerConfig(
             min_box_area=node.metadata['customNodeConfig']['min_box_area'],
             track_thresh=node.metadata['customNodeConfig']['track_thresh'],
@@ -95,13 +93,13 @@ class ServiceRunner(dl.BaseServiceRunner):
         writer = cv2.VideoWriter(output_video_path, fourcc, self.fps, (cv_frames[0].shape[1], cv_frames[0].shape[0]))
         try:
             # Loop through each input image file and write it to the output video
-            logger.info(f"Writing frames to video")
+            logger.info("Writing frames to video")
             for frame in cv_frames:
                 writer.write(frame)
 
             # Release the VideoWriter object
             writer.release()
-            logger.info(f"Uploading video to dataset")
+            logger.info("Uploading video to dataset")
             video_item = self.dataset.items.upload(
                 local_path=output_video_path, remote_path="/" + self.dl_output_dir.lstrip('/')
             )
@@ -141,14 +139,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         cv_frames = [cv2.imread(img_path) for img_path in images_files]
         video_item = self.stitch_and_upload(cv_frames, local_output_folder)
         builder = video_item.annotations.builder()
-        if self.trackerName == "ByteTrack":
-            self.tracker = ByteTrackTracker(
-                annotations_builder=builder, frame_rate=self.fps, config=self.trackers_config
-            )
-        elif self.trackerName == "DeepSORT":
-            self.tracker = DeepSORTTracker(annotations_builder=builder, config=self.trackers_config)
-        else:
-            raise ValueError(f"Invalid tracker name: {self.trackerName}")
+        self.tracker = ByteTrackTracker(
+            annotations_builder=builder, frame_rate=self.fps, config=self.trackers_config
+        )
         logger.info("Tracking frames")
         for i, (frame_i, item_i) in enumerate(zip(cv_frames, items)):
             frame_annotations = item_i.annotations.list().annotations
