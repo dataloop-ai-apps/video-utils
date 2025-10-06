@@ -67,9 +67,6 @@ The Application provides the following stitching functions:
      - `output_dir`: Directory where the merged video will be saved
      - `input_dir`: Directory containing the input frames (default: "input")
      - `fps`: Frames per second for the output video (default: 20)
-     - `tracker`: Object tracking method:
-       - `ByteTrack` (default): Fast and efficient tracking
-       - `DeepSORT`: Deep learning-based tracking
      - Tracker Configuration:
        - `min_box_area`: Minimum area for tracked boxes (default: 10)
        - `track_thresh`: Minimum confidence score for detections (default: 0.5)
@@ -86,9 +83,6 @@ The Application provides the following stitching functions:
    - Configuration Parameters:
      - `output_dir`: Directory where the merged video will be saved
      - `input_dir`: Directory containing the input videos (default: "input")
-     - `tracker`: Object tracking method:
-       - `ByteTrack` (default): Fast and efficient tracking
-       - `DeepSORT`: Deep learning-based tracking
    - Item Filtering:
      - First filters items by the specified `input_dir` path
      - Then filters by metadata:
@@ -102,5 +96,5 @@ The Application provides the following stitching functions:
        - Merges videos sequentially
        - Maintains original annotations
 
-Both functions preserve the original annotations and can optionally track objects across frames using either ByteTrack or DeepSORT algorithms.
+Both functions preserve the original annotations and use ByteTrack for object tracking across frames.
 

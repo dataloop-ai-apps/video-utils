@@ -99,32 +99,6 @@
               "widget": "dl-select"
             },
             {
-              "name": "tracker",
-              "title": "Tracker",
-              "props": {
-                "type": "string",
-                "required": true,
-                "options": [
-                  {
-                    "label": "ByteTrack",
-                    "value": "ByteTrack"
-                  },
-                  {
-                    "label": "DeepSORT",
-                    "value": "DeepSORT"
-                  }
-                ],
-                "default": "ByteTrack"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-select"
-            },
-            {
               "name": "fps",
               "title": "FPS",
               "props": {
@@ -263,32 +237,6 @@
               "widget": "dl-input"
             },
             {
-              "name": "tracker",
-              "title": "Tracker",
-              "props": {
-                "type": "string",
-                "required": true,
-                "options": [
-                  {
-                    "label": "ByteTrack",
-                    "value": "ByteTrack"
-                  },
-                  {
-                    "label": "DeepSORT",
-                    "value": "DeepSORT"
-                  }
-                ],
-                "default": "ByteTrack"
-              },
-              "rules": [
-                {
-                  "type": "required",
-                  "effect": "error"
-                }
-              ],
-              "widget": "dl-select"
-            },
-            {
               "name": "min_box_area",
               "title": "Minimum Box Area",
               "props": {
@@ -420,7 +368,7 @@
         "moduleName": "frames-to-video",
         "runtime": {
           "podType": "regular-xs",
-          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.2",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.3",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},
@@ -445,7 +393,7 @@
         "moduleName": "videos-to-video",
         "runtime": {
           "podType": "regular-xs",
-          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.2",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.3",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},

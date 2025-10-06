@@ -7,7 +7,7 @@ from typing import List
 
 import cv2
 import dtlpy as dl
-from stitching.trackers_adapters import ByteTrackTracker, DeepSORTTracker, TrackerConfig
+from stitching.trackers_adapters import ByteTrackTracker, TrackerConfig
 
 logger = logging.getLogger('video-utils.videos_to_video')
 
@@ -16,7 +16,6 @@ class ServiceRunner(dl.BaseServiceRunner):
     def __init__(self):
         self.dl_output_dir = None
         self.dl_input_dir = None
-        self.trackerName = None
         self.dataset = None
         self.trackers_config = None
 
@@ -185,7 +184,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         """
         self.dl_output_dir = node.metadata['customNodeConfig']['output_dir']
         self.dl_input_dir = node.metadata['customNodeConfig']['input_dir']
-        self.trackerName = node.metadata['customNodeConfig']['tracker']
         self.trackers_config = TrackerConfig(
             min_box_area=node.metadata['customNodeConfig']['min_box_area'],
             track_thresh=node.metadata['customNodeConfig']['track_thresh'],
@@ -196,23 +194,18 @@ class ServiceRunner(dl.BaseServiceRunner):
 
     def upload_annotations(self, video_item, merged_video_annotations, merged_video_frames):
         """
-        Uploads annotations to video item using specified tracker.
+        Uploads annotations to video item using ByteTrackTracker.
 
         Args:
             video_item: Dataloop video item to upload annotations to
             merged_video_annotations: List of annotations per frame
             merged_video_frames: List of video frames
         """
-        if self.trackerName == "ByteTrack":
-            tracker = ByteTrackTracker(
-                annotations_builder=video_item.annotations.builder(),
-                frame_rate=video_item.fps,
-                config=self.trackers_config,
-            )
-        elif self.trackerName == "DeepSORT":
-            tracker = DeepSORTTracker(annotations_builder=video_item.annotations.builder(), config=self.trackers_config)
-        else:
-            raise ValueError(f"Invalid tracker: {self.trackerName}")
+        tracker = ByteTrackTracker(
+            annotations_builder=video_item.annotations.builder(),
+            frame_rate=video_item.fps,
+            config=self.trackers_config,
+        )
         for i, (frame, frame_annotations) in enumerate(zip(merged_video_frames, merged_video_annotations)):
             tracker.update(frame, i, frame_annotations)
         video_item.annotations.upload(annotations=tracker.annotations_builder)
