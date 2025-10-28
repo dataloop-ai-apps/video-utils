@@ -1,5 +1,5 @@
 # Base image
-FROM dataloopai/dtlpy-agent:gpu.cuda.11.8.py3.8.pytorch2
+FROM dataloopai/dtlpy-agent:gpu.cuda.11.8.py3.10.pytorch2
 
 # Set environment variables
 USER root
@@ -14,9 +14,6 @@ USER 1000
 
 WORKDIR /trackers
 RUN git clone https://github.com/ifzhang/ByteTrack.git
-
-#RUN git clone https://github.com/NirAharon/BoT-SORT.git
-
 
 # Set working directory
 WORKDIR /tmp/
@@ -33,7 +30,7 @@ ENV PYTHONPATH="/trackers/ByteTrack:$PYTHONPATH"
 # Install ByteTrack (needs root for setup.py develop)
 USER root
 WORKDIR /trackers/ByteTrack
-RUN pip install -r requirements.txt && python3 setup.py develop
+RUN python3 setup.py develop
 USER 1000
 
 WORKDIR /
