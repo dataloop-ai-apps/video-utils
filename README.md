@@ -77,7 +77,7 @@ The Application provides the following stitching functions:
      - Then filters by metadata:
        - `origin_video_name`: Matches frames from the same original video
        - `created_time`: Matches frames created in the same batch
-     - Items are sorted by name to ensure correct frame order
+     - Items are sorted by frame item names to ensure correct frame order
 
 2. `videos_to_video` - Merges multiple videos into a single video with the following options:
    - Configuration Parameters:
