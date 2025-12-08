@@ -2,7 +2,7 @@
   "displayName": "[Video Utils] - Splitting",
   "name": "video-utils-splitting",
   "description": "Video Utils - Splitting is a collection of functions for video manipulation. The package includes functions for video splitting, video to videos splitting, and smart subsampling.",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
