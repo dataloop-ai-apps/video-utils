@@ -249,11 +249,6 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         sub_videos_items = sorted(list(sub_videos_items), key=lambda x: x.name)
 
-        # add index to sub videos items
-        for i, sub_video_item in enumerate(sub_videos_items):
-            sub_video_item.metadata["splitting_sub_videos_index"] = i
-            sub_video_item.update()
-
         logger.info("start uploading sub videos and annotations")
         for sub_video_item in sub_videos_items:
             sub_video_item.fps = item.fps

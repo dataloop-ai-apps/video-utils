@@ -173,7 +173,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         if not items or len(items) == 0:
             logger.error("No images found in specified directory")
             return []
-        return sorted(items, key=lambda x: x.metadata["splitting_sub_videos_index"], reverse=False)
+        return sorted(items, key=lambda x: x.name)
 
     def set_config_params(self, node: dl.PipelineNode):
         """
