@@ -67,10 +67,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         if not items or len(items) == 0:
             logger.error("No images found in specified directory")
             return []
-
-        # def sort_by_frame_index(item: dl.Item) -> tuple:
-            # return (item.metadata["splitting_sub_videos_index"], item.metadata["splliting_frame_index"])
-
+        
         return sorted(items, key=lambda x: x.name)
 
     def stitch_and_upload(self, cv_frames: List[np.ndarray], local_output_folder: str) -> dl.Item:

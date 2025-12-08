@@ -40,11 +40,10 @@ class ServiceRunner(dl.BaseServiceRunner):
         received_time = item.metadata.get("time", None)
         origin_video_name = os.path.basename(item.filename) if received_org_name is None else received_org_name
         time = datetime.datetime.now().isoformat() if received_time is None else received_time
-        # splitting_sub_videos_index = item.metadata.get("splitting_sub_videos_index", 0)
+
         return {
             "origin_video_name": origin_video_name,
             "time": time,
-            # "splitting_sub_videos_index": splitting_sub_videos_index,
         }
 
     def get_embedding(self, frame: np.ndarray) -> np.ndarray:
