@@ -1,0 +1,242 @@
+{
+  "displayName": "[Video Utils] - Prompting",
+  "name": "video-utils-prompting",
+  "description": "Video Utils - Prompting is a collection of tools for creating and processing prompt items from video frames. Includes frames-to-prompt grouping and prompt-to-text extraction.",
+  "version": "1.2.5",
+  "attributes": {
+    "Provider": "Dataloop",
+    "Category": "Application",
+    "Media Type": [
+      "Image",
+      "Text"
+    ],
+    "Application Type": [
+      "Pipeline Node"
+    ],
+    "License": "Apache 2.0"
+  },
+  "codebase": {
+    "type": "git",
+    "gitUrl": "https://github.com/dataloop-ai-apps/video-utils.git",
+    "gitTag": "1.0.0"
+  },
+  "scope": "public",
+  "components": {
+    "pipelineNodes": [
+      {
+        "scope": "node",
+        "name": "frames-to-prompt",
+        "displayName": "Frames to Prompt",
+        "description": "Group frame items into batches and create prompt items with text and image elements for VLM inference.",
+        "invoke": {
+          "type": "function",
+          "namespace": "frames-to-prompt.frames-to-prompt.run"
+        },
+        "categories": [
+          "video-utils"
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "group_size",
+              "title": "Group Size",
+              "props": {
+                "title": true,
+                "type": "number",
+                "default": 4,
+                "min": 1,
+                "step": 1,
+                "required": true,
+                "placeholder": "Number of frames per prompt group"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "prompt_dir",
+              "title": "Prompt Items Output Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "/prompt_items_dir",
+                "required": true,
+                "placeholder": "Insert output directory for prompt items"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            },
+            {
+              "name": "prompt_instruction",
+              "title": "Prompt Instruction",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "Provide a detailed description of this video segment: describe the scene, setting, and environment; describe the actions, movements, and interactions taking place; note any changes or progression between frames; ",
+                "required": true,
+                "placeholder": "Insert the instruction to include in each prompt"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            }
+          ]
+        }
+      },
+      {
+        "scope": "node",
+        "name": "prompt-to-text",
+        "displayName": "Prompt to Text",
+        "description": "Extract model responses from prompt items (after VLM prediction) and upload them as text items.",
+        "invoke": {
+          "type": "function",
+          "namespace": "prompt-to-text.prompt-to-text.run"
+        },
+        "categories": [
+          "video-utils"
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "output_dir",
+              "title": "Text Items Output Directory",
+              "props": {
+                "title": true,
+                "type": "string",
+                "default": "/text_responses_dir",
+                "required": true,
+                "placeholder": "Insert output directory for text response items"
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-input"
+            }
+          ]
+        }
+      }
+    ],
+    "modules": [
+      {
+        "name": "frames-to-prompt",
+        "entryPoint": "prompting/frames_to_prompt.py",
+        "className": "ServiceRunner",
+        "initInputs": [],
+        "functions": [
+          {
+            "name": "run",
+            "description": "Group frames into prompt items for VLM inference",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item[]",
+                "name": "items"
+              }
+            ],
+            "displayIcon": "qa-sampling",
+            "displayName": "Frames to Prompt"
+          }
+        ]
+      },
+      {
+        "name": "prompt-to-text",
+        "entryPoint": "prompting/prompt_to_text.py",
+        "className": "ServiceRunner",
+        "initInputs": [],
+        "functions": [
+          {
+            "name": "run",
+            "description": "Extract VLM response from prompt item into a text item",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
+            "displayIcon": "qa-sampling",
+            "displayName": "Prompt to Text"
+          }
+        ]
+      }
+    ],
+    "services": [
+      {
+        "name": "frames-to-prompt",
+        "moduleName": "frames-to-prompt",
+        "runtime": {
+          "podType": "regular-xs",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.4",
+          "numReplicas": 1,
+          "concurrency": 10,
+          "pyPackages": {},
+          "singleAgent": false,
+          "autoscaler": {
+            "type": "rabbitmq",
+            "minReplicas": 0,
+            "maxReplicas": 2,
+            "queueLength": 10
+          },
+          "preemptible": false
+        },
+        "maxAttempts": 3,
+        "executionTimeout": 172800,
+        "drainTime": 600,
+        "onReset": "failed",
+        "runExecutionAsProcess": false,
+        "operation": "none"
+      },
+      {
+        "name": "prompt-to-text",
+        "moduleName": "prompt-to-text",
+        "runtime": {
+          "podType": "regular-xs",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.4",
+          "numReplicas": 1,
+          "concurrency": 10,
+          "pyPackages": {},
+          "singleAgent": false,
+          "autoscaler": {
+            "type": "rabbitmq",
+            "minReplicas": 0,
+            "maxReplicas": 2,
+            "queueLength": 10
+          },
+          "preemptible": false
+        },
+        "maxAttempts": 3,
+        "executionTimeout": 172800,
+        "drainTime": 600,
+        "onReset": "failed",
+        "runExecutionAsProcess": false,
+        "operation": "none"
+      }
+    ]
+  }
+}
