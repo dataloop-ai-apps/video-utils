@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import tempfile
+from dataclasses import dataclass
 from typing import List, Tuple, Dict, Union, Any
 
 import cv2
@@ -10,21 +11,55 @@ import dtlpy as dl
 logger = logging.getLogger('video-utils.video_to_videos')
 
 
-class ServiceRunner(dl.BaseServiceRunner):
-    def __init__(self):
-        self.input_base_name = None
-        self.video_type = None
-        self.fourcc = None
-        self.fps = None
-        self.frame_size = None
-        self.total_frames = None
-        self.max_fc_len = None
-        self.split_type = None
-        self.dl_output_folder = None
-        self.splitter_arg = None
-        self.n_overlap = None
+@dataclass
+class VideoContext:
+    """Per-call state bundled together to avoid storing anything on the service instance."""
 
-    def get_new_items_metadata(self, item: dl.Item, sub_videos_intervals: List[List[int]]) -> Dict[str, Any]:
+    split_type: str
+    dl_output_folder: str
+    splitter_arg: Union[int, float, List]
+    n_overlap: int
+    input_base_name: str
+    video_type: str
+    fourcc: int
+    fps: int
+    frame_size: Tuple[int, int]
+    total_frames: int
+    max_fc_len: int
+
+
+class ServiceRunner(dl.BaseServiceRunner):
+
+    @staticmethod
+    def _build_context(node: dl.PipelineNode, cap: cv2.VideoCapture, input_video: str) -> VideoContext:
+        config = node.metadata['customNodeConfig']
+        logger.info(f"node custom config: {config}")
+
+        base_name = os.path.splitext(os.path.basename(input_video))[0]
+        video_type = os.path.splitext(os.path.basename(input_video))[1].replace(".", "")
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        ctx = VideoContext(
+            split_type=config['split_type'],
+            dl_output_folder=config['output_dir'],
+            splitter_arg=config['splitter_arg'],
+            n_overlap=config.get('n_overlap', 0),
+            input_base_name=base_name,
+            video_type=video_type,
+            fourcc=cv2.VideoWriter_fourcc(*("VP80" if video_type.lower() == "webm" else "mp4v")),
+            fps=int(cap.get(cv2.CAP_PROP_FPS)),
+            frame_size=(int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))),
+            total_frames=total_frames,
+            max_fc_len=len(str(total_frames)),
+        )
+        logger.info(
+            f"Video context: base_name={ctx.input_base_name}, type={ctx.video_type}, "
+            f"fps={ctx.fps}, size={ctx.frame_size}, frames={ctx.total_frames}"
+        )
+        return ctx
+
+    @staticmethod
+    def get_new_items_metadata(item: dl.Item, sub_videos_intervals: List[List[int]]) -> Dict[str, Any]:
         """
         Get metadata for new sub-video items.
 
@@ -41,17 +76,21 @@ class ServiceRunner(dl.BaseServiceRunner):
         time = datetime.datetime.now().isoformat() if received_time is None else received_time
         return {"origin_video_name": origin_video_name, "time": time, "sub_videos_intervals": sub_videos_intervals}
 
-    def get_sub_videos_intervals_by_num_frames(self, num_frames_per_split: Union[int, List[int]]) -> List[List[int]]:
+    @staticmethod
+    def get_sub_videos_intervals_by_num_frames(
+        ctx: VideoContext, num_frames_per_split: Union[int, List[int]]
+    ) -> List[List[int]]:
         """
         Compute sub video intervals based on number of frames per split.
 
         Args:
+            ctx: Per-call video context
             num_frames_per_split (int or list): Number of frames per split or list of frame counts.
 
         Returns:
             list: List of [start_frame, end_frame] intervals for each sub video.
         """
-        assert self.n_overlap >= 0, "overlap must be greater than or equal to 0"
+        assert ctx.n_overlap >= 0, "overlap must be greater than or equal to 0"
         sub_videos_intervals = []
         start_frame = 0
         end_frame = 0
@@ -59,30 +98,32 @@ class ServiceRunner(dl.BaseServiceRunner):
             for num_frames in num_frames_per_split:
                 assert num_frames > 0, "number of frames per split must be greater then 0"
                 end_frame = start_frame + num_frames - 1
-                sub_videos_intervals.append([start_frame, min(end_frame, self.total_frames - 1)])
-                start_frame += max(num_frames - self.n_overlap, 0)
-                if end_frame >= self.total_frames - 1:
+                sub_videos_intervals.append([start_frame, min(end_frame, ctx.total_frames - 1)])
+                start_frame += max(num_frames - ctx.n_overlap, 0)
+                if end_frame >= ctx.total_frames - 1:
                     break
         else:
             assert (
-                num_frames_per_split > self.n_overlap >= 0
+                num_frames_per_split > ctx.n_overlap >= 0
             ), "number of frames per split must be greater then overlap "
-            while self.total_frames - start_frame >= num_frames_per_split:
+            while ctx.total_frames - start_frame >= num_frames_per_split:
                 end_frame = start_frame + num_frames_per_split - 1
-                sub_videos_intervals.append([start_frame, min(end_frame, self.total_frames - 1)])
-                start_frame += num_frames_per_split - self.n_overlap
-                if end_frame >= self.total_frames - 1:
+                sub_videos_intervals.append([start_frame, min(end_frame, ctx.total_frames - 1)])
+                start_frame += num_frames_per_split - ctx.n_overlap
+                if end_frame >= ctx.total_frames - 1:
                     break
 
-        if end_frame < self.total_frames - 1:
-            sub_videos_intervals.append([start_frame, self.total_frames - 1])
+        if end_frame < ctx.total_frames - 1:
+            sub_videos_intervals.append([start_frame, ctx.total_frames - 1])
         return sub_videos_intervals
 
-    def get_sub_videos_intervals_by_num_splits(self, num_splits: int) -> List[List[int]]:
+    @staticmethod
+    def get_sub_videos_intervals_by_num_splits(ctx: VideoContext, num_splits: int) -> List[List[int]]:
         """
         Compute sub video intervals based on desired number of splits.
 
         Args:
+            ctx: Per-call video context
             num_splits (int): Number of sub videos to create.
 
         Returns:
@@ -90,10 +131,10 @@ class ServiceRunner(dl.BaseServiceRunner):
         """
         assert num_splits > 0, "number of splits must be greater then 0"
         assert (
-            self.total_frames > self.n_overlap >= 0
+            ctx.total_frames > ctx.n_overlap >= 0
         ), "overlap must be greater than or equal to 0 and less than total_frames"
         sub_videos_intervals = []
-        total_frames_with_overlap = self.total_frames + (num_splits - 1) * self.n_overlap
+        total_frames_with_overlap = ctx.total_frames + (num_splits - 1) * ctx.n_overlap
         sub_video_frames_count = total_frames_with_overlap // num_splits
         sub_videos_with_extra_frame = total_frames_with_overlap % num_splits
         start_frame = 0
@@ -103,16 +144,20 @@ class ServiceRunner(dl.BaseServiceRunner):
                 extra_frame = True
             end_frame = start_frame + sub_video_frames_count + (1 if extra_frame else 0) - 1
             sub_videos_intervals.append([start_frame, end_frame])
-            start_frame += sub_video_frames_count + (1 if extra_frame else 0) - self.n_overlap
+            start_frame += sub_video_frames_count + (1 if extra_frame else 0) - ctx.n_overlap
             sub_videos_with_extra_frame -= 1
             extra_frame = False
         return sub_videos_intervals
 
-    def get_sub_videos_intervals_by_length(self, out_length: Union[float, List[float]]) -> List[List[int]]:
+    @staticmethod
+    def get_sub_videos_intervals_by_length(
+        ctx: VideoContext, out_length: Union[float, List[float]]
+    ) -> List[List[int]]:
         """
         Compute sub video intervals based on desired output length in seconds.
 
         Args:
+            ctx: Per-call video context
             out_length (Union[float, List[float]]): Length of each sub video in seconds.
 
         Returns:
@@ -122,56 +167,22 @@ class ServiceRunner(dl.BaseServiceRunner):
             num_frames_per_split = []
             for ltime in out_length:
                 assert ltime > 0, "length of sub video must be greater then 0"
-                num_frames_per_split.append(int(ltime * self.fps))
+                num_frames_per_split.append(int(ltime * ctx.fps))
         else:
             assert out_length > 0, "length of sub video must be greater then 0"
-            num_frames_per_split = int(out_length * self.fps)
-        return self.get_sub_videos_intervals_by_num_frames(num_frames_per_split)
+            num_frames_per_split = int(out_length * ctx.fps)
+        return ServiceRunner.get_sub_videos_intervals_by_num_frames(ctx, num_frames_per_split)
 
-    def set_config_params(self, node: dl.PipelineNode) -> None:
-        """
-        Set configuration parameters from pipeline node metadata.
-
-        Args:
-            node (dl.PipelineNode): Pipeline node containing configuration
-        """
-        logger.info(f"node custom config: {node.metadata['customNodeConfig']}")
-        self.split_type = node.metadata['customNodeConfig']['split_type']
-        self.dl_output_folder = node.metadata['customNodeConfig']['output_dir']
-        self.splitter_arg = node.metadata['customNodeConfig']['splitter_arg']
-        self.n_overlap = node.metadata['customNodeConfig'].get('n_overlap', 0)  # default to 0 if not provided
-
-    def initialize_video_params(self, cap: cv2.VideoCapture, input_video: str) -> None:
-        """
-        Initialize video parameters from OpenCV capture object.
-
-        Args:
-            cap (cv2.VideoCapture): Video capture object
-            input_video (str): Path to input video file
-        """
-        self.input_base_name = os.path.splitext(os.path.basename(input_video))[0]
-        self.video_type = os.path.splitext(os.path.basename(input_video))[1].replace(".", "")
-        # Use appropriate codec based on video type
-        self.fourcc = cv2.VideoWriter_fourcc(*("VP80" if self.video_type.lower() == "webm" else "mp4v"))
-        self.fps = int(cap.get(cv2.CAP_PROP_FPS))
-        self.frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-        # Get the total number of frames in the input video
-        self.total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.max_fc_len = len(str(self.total_frames))
-
-        logger.info(
-            f"Video params initialized: input_base_name={self.input_base_name}, video_type={self.video_type}, "
-            f"fourcc={self.fourcc}, fps={self.fps}, frame_size={self.frame_size}, "
-            f"total_frames={self.total_frames}, max_fc_len={self.max_fc_len}"
-        )
-
+    @staticmethod
     def write_video_segment(
-        self, cap: cv2.VideoCapture, annotations: Any, start_frame: int, end_frame: int, i: int, sub_videos_dir: str
+        ctx: VideoContext, cap: cv2.VideoCapture, annotations: Any,
+        start_frame: int, end_frame: int, i: int, sub_videos_dir: str,
     ) -> Tuple[str, List[List[Any]]]:
         """
         Extract a segment from source video and collect its annotations.
 
         Args:
+            ctx: Per-call video context
             cap: OpenCV video capture object
             annotations: Video annotations
             start_frame: Starting frame index
@@ -182,12 +193,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         Returns:
             Tuple of (sub video filename, annotations list)
         """
-        sub_video_name = f"{self.input_base_name}_{str(i).zfill(self.max_fc_len)}.{self.video_type}"
+        sub_video_name = f"{ctx.input_base_name}_{str(i).zfill(ctx.max_fc_len)}.{ctx.video_type}"
         output_video = os.path.join(sub_videos_dir, sub_video_name)
         logger.info(f"output_video: {output_video}")
         sub_video_annotations = []
 
-        writer = cv2.VideoWriter(output_video, self.fourcc, self.fps, self.frame_size)
+        writer = cv2.VideoWriter(output_video, ctx.fourcc, ctx.fps, ctx.frame_size)
         cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
         for sub_video_frame_count, frame_index in enumerate(range(start_frame, end_frame + 1)):
@@ -214,8 +225,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         writer.release()
         return sub_video_name, sub_video_annotations
 
+    @staticmethod
     def upload_sub_videos_and_annotations(
-        self,
+        ctx: VideoContext,
         item: dl.Item,
         sub_videos_annotations_info: Dict[str, List[List[Any]]],
         sub_videos_intervals: List[List[int]],
@@ -225,6 +237,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         Upload sub videos and their annotations to the platform.
 
         Args:
+            ctx: Per-call video context
             item: Source video item
             sub_videos_annotations_info: Dict mapping sub video names to their annotations
             sub_videos_intervals: List of frame intervals for each sub video
@@ -233,17 +246,16 @@ class ServiceRunner(dl.BaseServiceRunner):
         Returns:
             List of uploaded sub video items
         """
-        logger.info(f"Uploading sub videos to {self.dl_output_folder}")
-        item_metadata = self.get_new_items_metadata(item, sub_videos_intervals)
+        logger.info(f"Uploading sub videos to {ctx.dl_output_folder}")
+        item_metadata = ServiceRunner.get_new_items_metadata(item, sub_videos_intervals)
         logger.info(
-            f"uploading from {sub_videos_dir} to {os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/')}"
+            f"uploading from {sub_videos_dir} to {os.path.dirname(ctx.dl_output_folder.rstrip('/')).lstrip('/')}"
         )
         sub_videos_items = item.dataset.items.upload(
             local_path=sub_videos_dir,
-            remote_path="/" + os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
+            remote_path="/" + os.path.dirname(ctx.dl_output_folder.rstrip('/')).lstrip('/'),
             item_metadata=item_metadata,
         )
-        # if only one item was uploaded, convert to list
         if isinstance(sub_videos_items, dl.Item):
             sub_videos_items = [sub_videos_items]
 
@@ -268,12 +280,10 @@ class ServiceRunner(dl.BaseServiceRunner):
                         frame_num=frame_index,
                         object_id=ann["object_id"],
                     )
-
-            # Upload the annotations to platform
             sub_video_item.annotations.upload(annotations=builder)
         return sub_videos_items
 
-    def video_to_videos(self, item: dl.Item, context: dl.Context) -> None:
+    def video_to_videos(self, item: dl.Item, context: dl.Context) -> List[dl.Item]:
         """
         Split a video into multiple sub-videos based on specified parameters.
 
@@ -288,8 +298,6 @@ class ServiceRunner(dl.BaseServiceRunner):
         cap = None
 
         try:
-            self.set_config_params(node=context.node)
-
             local_input_folder = tempfile.mkdtemp(suffix="_input")
             local_output_folder = tempfile.mkdtemp(suffix="_output")
 
@@ -300,29 +308,27 @@ class ServiceRunner(dl.BaseServiceRunner):
             if not cap.isOpened():
                 raise ValueError(f"Failed to open video file: {input_video}")
 
-            self.initialize_video_params(cap, input_video)
+            ctx = self._build_context(context.node, cap, input_video)
 
-            logger.info(f"split type: {self.split_type}")
-            sub_videos_intervals = []
-            if self.split_type == "num_frames":
-                sub_videos_intervals = self.get_sub_videos_intervals_by_num_frames(self.splitter_arg)
-            elif self.split_type == "num_splits":
-                sub_videos_intervals = self.get_sub_videos_intervals_by_num_splits(self.splitter_arg)
-            elif self.split_type == "out_length":
-                sub_videos_intervals = self.get_sub_videos_intervals_by_length(self.splitter_arg)
+            logger.info(f"split type: {ctx.split_type}")
+            if ctx.split_type == "num_frames":
+                sub_videos_intervals = self.get_sub_videos_intervals_by_num_frames(ctx, ctx.splitter_arg)
+            elif ctx.split_type == "num_splits":
+                sub_videos_intervals = self.get_sub_videos_intervals_by_num_splits(ctx, ctx.splitter_arg)
+            elif ctx.split_type == "out_length":
+                sub_videos_intervals = self.get_sub_videos_intervals_by_length(ctx, ctx.splitter_arg)
             else:
-                raise ValueError(f"Invalid split type: {self.split_type}")
+                raise ValueError(f"Invalid split type: {ctx.split_type}")
 
             logger.info(f"sub_videos_intervals: {sub_videos_intervals}")
 
-            # Process each video split
             annotations = item.annotations.list()
             sub_videos_annotations_info = {}
-            # Create output directory for sub-videos
-            sub_videos_dir = os.path.join(local_output_folder, os.path.basename(self.dl_output_folder.rstrip('/')))
+            sub_videos_dir = os.path.join(local_output_folder, os.path.basename(ctx.dl_output_folder.rstrip('/')))
             os.makedirs(sub_videos_dir)
             for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
                 sub_video_name, sub_video_annotations = self.write_video_segment(
+                    ctx=ctx,
                     cap=cap,
                     annotations=annotations,
                     start_frame=start_frame,
@@ -332,9 +338,9 @@ class ServiceRunner(dl.BaseServiceRunner):
                 )
                 sub_videos_annotations_info[sub_video_name] = sub_video_annotations
 
-            logger.info(f"Uploading sub videos and annotations to {self.dl_output_folder}")
+            logger.info(f"Uploading sub videos and annotations to {ctx.dl_output_folder}")
             items = self.upload_sub_videos_and_annotations(
-                item, sub_videos_annotations_info, sub_videos_intervals, sub_videos_dir
+                ctx, item, sub_videos_annotations_info, sub_videos_intervals, sub_videos_dir
             )
         except Exception as e:
             logger.error(f"Error processing video: {str(e)}")
