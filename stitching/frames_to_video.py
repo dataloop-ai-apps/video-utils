@@ -58,10 +58,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         original_video_name = item.metadata.get('origin_video_name', None)
         if original_video_name is not None:
             filters.add(field='metadata.origin_video_name', values=original_video_name)
-        # if created_time is set on the received item, then use it to filter the frames
-        created_time = item.metadata.get('created_time', None)
-        if created_time is not None:
-            filters.add(field='metadata.created_time', values=created_time)
+        run_time = item.metadata.get('time', None)
+        if run_time is not None:
+            filters.add(field='metadata.time', values=run_time)
         items = self.dataset.items.get_all_items(filters=filters)
         logger.info(f"get_input_items number of items: {len(items)}")
         if not items or len(items) == 0:
