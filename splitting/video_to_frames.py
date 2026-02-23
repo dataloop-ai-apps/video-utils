@@ -44,6 +44,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         return {
             "origin_video_name": origin_video_name,
             "time": time,
+            "fps": item.metadata.get('fps', None),
         }
 
     def get_embedding(self, frame: np.ndarray) -> np.ndarray:

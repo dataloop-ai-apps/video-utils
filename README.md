@@ -22,7 +22,7 @@ The Application provides the following splitting functions:
        - For `num_splits`: Number of desired frame splits
    - Output Metadata:
      - `origin_video_name`: Original video filename
-     - `created_time`: Timestamp of frame extraction
+     - `time`: Timestamp of frame extraction
 
 2. `smart-frames-splitting` - Splits a video into frames using similarity-based sampling:
    - Split Types:
@@ -35,7 +35,7 @@ The Application provides the following splitting functions:
      - `window_size`: Size of the sliding window for structural similarity (default: 7, range: 3-25)
    - Output Metadata:
      - `origin_video_name`: Original video filename
-     - `created_time`: Timestamp of frame extraction
+     - `time`: Timestamp of frame extraction
 
 3. `video_to_videos` - Splits a video into multiple sub-videos with the following options:
    - Split Types:
@@ -76,7 +76,7 @@ The Application provides the following stitching functions:
      - First filters items by the specified `input_dir` path
      - Then filters by metadata:
        - `origin_video_name`: Matches frames from the same original video
-       - `created_time`: Matches frames created in the same batch
+       - `time`: Matches frames created in the same batch
      - Items are sorted by frame item names to ensure correct frame order
 
 2. `videos_to_video` - Merges multiple videos into a single video with the following options:
