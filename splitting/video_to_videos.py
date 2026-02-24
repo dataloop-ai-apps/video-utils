@@ -302,11 +302,31 @@ class ServiceRunner(dl.BaseServiceRunner):
             local_output_folder = tempfile.mkdtemp(suffix="_output")
 
             logger.info(f"Downloading video to {local_input_folder}")
-            input_video = item.download(local_path=local_input_folder)
+            download_result = item.download(local_path=local_input_folder)
+            logger.info(f"download() returned: type={type(download_result).__name__}, value={download_result}")
+
+            if isinstance(download_result, str) and os.path.isfile(download_result):
+                input_video = download_result
+            else:
+                input_video = os.path.join(local_input_folder, "items", item.filename.lstrip("/"))
+
+            if not os.path.isfile(input_video):
+                all_files = []
+                for root, dirs, files in os.walk(local_input_folder):
+                    for f in files:
+                        all_files.append(os.path.join(root, f))
+                raise FileNotFoundError(
+                    f"Video file not found at {input_video}. "
+                    f"Files in temp dir: {all_files}"
+                )
+            logger.info(f"Input video path: {input_video} (size={os.path.getsize(input_video)} bytes)")
 
             cap = cv2.VideoCapture(input_video)
             if not cap.isOpened():
-                raise ValueError(f"Failed to open video file: {input_video}")
+                raise ValueError(
+                    f"Failed to open video file: {input_video} "
+                    f"(size={os.path.getsize(input_video)} bytes, ext={os.path.splitext(input_video)[1]})"
+                )
 
             ctx = self._build_context(context.node, cap, input_video)
 
