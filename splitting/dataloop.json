@@ -380,7 +380,7 @@
         "name": "video-to-frames",
         "moduleName": "video-to-frames",
         "runtime": {
-          "podType": "regular-xs",
+          "podType": "regular-m",
           "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.4",
           "numReplicas": 1,
           "concurrency": 10,
@@ -405,7 +405,7 @@
         "name": "video-to-videos",
         "moduleName": "video-to-videos",
         "runtime": {
-          "podType": "regular-xs",
+          "podType": "regular-m",
           "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.4",
           "numReplicas": 1,
           "concurrency": 10,

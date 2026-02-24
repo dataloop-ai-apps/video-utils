@@ -247,7 +247,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         # add index to frame items
         for i, frame_item in enumerate(frames_items_list):
-            frame_item.metadata["splliting_frame_index"] = i
+            frame_item.metadata["splitting_frame_index"] = i
             frame_item.update()
 
         logger.info("upload frames annotations")
