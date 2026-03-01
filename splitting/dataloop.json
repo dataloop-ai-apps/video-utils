@@ -316,6 +316,28 @@
                 "required": false
               },
               "widget": "dl-input"
+            },
+            {
+              "name": "use_ffmpeg",
+              "title": "Use FFmpeg (faster, preserves audio)",
+              "props": {
+                "title": true,
+                "type": "boolean",
+                "default": false,
+                "required": false
+              },
+              "widget": "dl-toggle"
+            },
+            {
+              "name": "carry_annotations",
+              "title": "Carry over annotations to sub-videos",
+              "props": {
+                "title": true,
+                "type": "boolean",
+                "default": true,
+                "required": false
+              },
+              "widget": "dl-toggle"
             }
           ]
         }

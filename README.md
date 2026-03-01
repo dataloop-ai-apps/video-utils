@@ -49,6 +49,8 @@ The Application provides the following splitting functions:
        - For `num_splits`: Number of desired sub-videos
        - For `out_length`: Length of each sub-video in seconds
      - `n_overlap`: Number of overlapping frames between consecutive sub-videos
+     - `use_ffmpeg`: When `true`, uses FFmpeg stream-copy instead of OpenCV for splitting. This is significantly faster and **preserves the audio track**. Ideal for pipelines that process audio downstream (e.g., ASR). Default: `false`.
+     - `carry_annotations`: When `true`, remaps and carries source annotations to each sub-video. Works with both OpenCV and FFmpeg modes. Set to `false` to skip annotation carry-over for faster processing when annotations are not needed. Default: `true`.
    - Output Metadata:
      - `origin_video_name`: Original video filename with extension
      - `time`: Timestamp of video creation
