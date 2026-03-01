@@ -27,7 +27,7 @@
         "scope": "node",
         "name": "video-to-frames",
         "displayName": "Video to Frames",
-        "description": "Split video into frames by number of splits, time interval, or frames interval.",
+        "description": "Split video into frames by number of frames, number of splits, time interval, or frames interval.",
         "invoke": {
           "type": "function",
           "namespace": "video-to-frames.video-to-frames.video_to_frames"
@@ -63,6 +63,10 @@
                 "required": true,
                 "options": [
                   {
+                    "label": "Uniform Sampling (N evenly spaced frames)",
+                    "value": "num_frames"
+                  },
+                  {
                     "label": "Split by Number of Splits",
                     "value": "num_splits"
                   },
@@ -87,7 +91,7 @@
             },
             {
               "name": "splitter_arg",
-              "title": "Number of Splits/Time Interval/Frames Interval",
+              "title": "Number of Frames/Splits/Time Interval/Frames Interval",
               "props": {
                 "title": true,
                 "type": "number",
@@ -102,6 +106,17 @@
                 }
               ],
               "widget": "dl-input"
+            },
+            {
+              "name": "carry_annotations",
+              "title": "Carry over annotations to frames",
+              "props": {
+                "title": true,
+                "type": "boolean",
+                "default": true,
+                "required": false
+              },
+              "widget": "dl-toggle"
             }
           ]
         }
@@ -316,6 +331,28 @@
                 "required": false
               },
               "widget": "dl-input"
+            },
+            {
+              "name": "use_ffmpeg",
+              "title": "Use FFmpeg (faster, preserves audio)",
+              "props": {
+                "title": true,
+                "type": "boolean",
+                "default": false,
+                "required": false
+              },
+              "widget": "dl-toggle"
+            },
+            {
+              "name": "carry_annotations",
+              "title": "Carry over annotations to sub-videos",
+              "props": {
+                "title": true,
+                "type": "boolean",
+                "default": true,
+                "required": false
+              },
+              "widget": "dl-toggle"
             }
           ]
         }

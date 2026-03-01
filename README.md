@@ -11,18 +11,22 @@ The Application provides the following splitting functions:
 
 1. `video_to_frames` - Splits a video into individual frames with the following options:
    - Split Types:
+     - `num_frames`: Uniform sampling — extract exactly N evenly spaced frames from the video
      - `frames_interval`: Extract frames at regular frame intervals (e.g., every N frames)
      - `time_interval`: Extract frames at regular time intervals (e.g., every N seconds)
      - `num_splits`: Split video into specified number of frames (evenly distributed)
    - Configuration Parameters:
      - `output_dir`: Directory where frames will be saved
      - `splitter_arg`: Value depends on split type:
+       - For `num_frames`: Number of frames to extract (evenly spaced)
        - For `frames_interval`: Number of frames between extractions
        - For `time_interval`: Time in seconds between extractions
        - For `num_splits`: Number of desired frame splits
+     - `carry_annotations`: When `true`, carries source video annotations to extracted frames. Default: `true`.
    - Output Metadata:
      - `origin_video_name`: Original video filename
      - `time`: Timestamp of frame extraction
+     - `splitting_frame_index`: Sequential index of each frame (under `metadata.user`)
 
 2. `smart-frames-splitting` - Splits a video into frames using similarity-based sampling:
    - Split Types:
@@ -49,12 +53,16 @@ The Application provides the following splitting functions:
        - For `num_splits`: Number of desired sub-videos
        - For `out_length`: Length of each sub-video in seconds
      - `n_overlap`: Number of overlapping frames between consecutive sub-videos
+     - `use_ffmpeg`: When `true`, uses FFmpeg stream-copy instead of OpenCV for splitting. This is significantly faster and **preserves the audio track**. Ideal for pipelines that process audio downstream (e.g., ASR). Default: `false`.
+     - `carry_annotations`: When `true`, remaps and carries source annotations to each sub-video. Works with both OpenCV and FFmpeg modes. Set to `false` to skip annotation carry-over for faster processing when annotations are not needed. Default: `true`.
    - Output Metadata:
      - `origin_video_name`: Original video filename with extension
      - `time`: Timestamp of video creation
      - `sub_videos_intervals`: List of frame intervals for each sub-video
 
 All functions preserve the original video's annotations and metadata, creating new items with proper references to the source video. The metadata helps track the relationship between the original video and its derived items, which is particularly useful for stitching operations.
+
+> **Note on FFmpeg mode:** When `use_ffmpeg` is enabled, FFmpeg must be available on the runner image. The default Dataloop runner images include FFmpeg. This mode uses stream-copy (`-c copy`) so there is no re-encoding — splits are near-instant and lossless. Annotation carry-over is supported in both modes via the `carry_annotations` toggle.
 
 
 ## [Video Utils] - Stitching

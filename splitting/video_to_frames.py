@@ -36,15 +36,21 @@ class ServiceRunner(dl.BaseServiceRunner):
         Returns:
             Dict containing metadata for new items
         """
-        received_org_name = item.metadata.get("origin_video_name", None)
-        received_time = item.metadata.get("time", None)
-        origin_video_name = os.path.basename(item.filename) if received_org_name is None else received_org_name
-        time = datetime.datetime.now().isoformat() if received_time is None else received_time
+        user_meta = item.metadata.get('user', {})
+        origin_video_name = user_meta.get(
+            'origin_video_name',
+            item.metadata.get('origin_video_name', os.path.basename(item.filename))
+        )
+        time = user_meta.get(
+            'time',
+            item.metadata.get('time', datetime.datetime.now().isoformat())
+        )
+        fps = user_meta.get('fps', item.metadata.get('fps'))
 
         return {
             "origin_video_name": origin_video_name,
             "time": time,
-            "fps": item.metadata.get('fps', None),
+            "fps": fps,
         }
 
     def get_embedding(self, frame: np.ndarray) -> np.ndarray:
@@ -192,6 +198,16 @@ class ServiceRunner(dl.BaseServiceRunner):
             logger.info(f"frames_interval: {frames_interval}")
             return list(range(0, total_frames, frames_interval))
 
+        if self.split_type == 'num_frames':
+            logger.info(f"num_frames (uniform): {self.splitter_arg}")
+            n = int(self.splitter_arg)
+            if total_frames <= 0:
+                return []
+            if n >= total_frames:
+                return list(range(total_frames))
+            step = total_frames / n
+            return [int(round(i * step)) for i in range(n)]
+
         if self.split_type == 'embedding_similarity_sampling':
             return self.embedding_similarity_sampling(cap, fps)
         if self.split_type == 'structural_similarity_sampling':
@@ -200,7 +216,8 @@ class ServiceRunner(dl.BaseServiceRunner):
         raise ValueError(f"Invalid split type: {self.split_type}")
 
     def upload_frames(
-        self, item: dl.Item, frames_list: List[int], cap: cv2.VideoCapture, temp_dir: str
+        self, item: dl.Item, frames_list: List[int], cap: cv2.VideoCapture,
+        temp_dir: str, carry_annotations: bool = True,
     ) -> List[dl.Item]:
         """
         Upload extracted frames as new items with annotations.
@@ -210,15 +227,15 @@ class ServiceRunner(dl.BaseServiceRunner):
             frames_list: List of frame indices to extract
             cap: OpenCV video capture object
             temp_dir: Temporary directory path for storing frames
+            carry_annotations: Whether to carry source annotations to frames
 
         Returns:
             List of uploaded frame items
         """
         if len(frames_list) == 0:
-            return
+            return []
         num_digits = len(str(max(frames_list)))
         item_dataset = item.dataset
-        annotations = item.annotations.list()
         logger.info(f"frames_dir: {self.dl_output_folder}")
         frames_dir = os.path.join(temp_dir, os.path.basename(self.dl_output_folder.rstrip('/')))
         os.makedirs(frames_dir)
@@ -234,36 +251,35 @@ class ServiceRunner(dl.BaseServiceRunner):
             cv2.imwrite(frame_path, frame)
 
         logger.info(f"uploading frames to {self.dl_output_folder}")
-        # batch upload
         frames_items_generator = item_dataset.items.upload(
             local_path=frames_dir,
             remote_path="/" + os.path.dirname(self.dl_output_folder.rstrip('/')).lstrip('/'),
             item_metadata=self.get_new_items_metadata(item),
         )
-        # if only one item was uploaded, convert to list
         if isinstance(frames_items_generator, dl.Item):
             frames_items_generator = [frames_items_generator]
         frames_items_list = sorted(list(frames_items_generator), key=lambda x: x.name)
 
-        # add index to frame items
         for i, frame_item in enumerate(frames_items_list):
-            frame_item.metadata["splitting_frame_index"] = i
+            frame_item.metadata.setdefault('user', {})['splitting_frame_index'] = i
             frame_item.update()
 
-        logger.info("upload frames annotations")
-        if annotations:
-            for frame_item in frames_items_list:
-                frame_idx = int(frame_item.name.split('_')[-1].split('.')[0])
-                frame_annotation = annotations.get_frame(frame_num=frame_idx)
-                builder = frame_item.annotations.builder()
-                for ann in frame_annotation.annotations:
-                    if ann.object_visible:
-                        builder.add(
-                            annotation_definition=dl.Box(
-                                top=ann.top, left=ann.left, bottom=ann.bottom, right=ann.right, label=ann.label
+        if carry_annotations:
+            logger.info("upload frames annotations")
+            annotations = item.annotations.list()
+            if annotations:
+                for frame_item in frames_items_list:
+                    frame_idx = int(frame_item.name.split('_')[-1].split('.')[0])
+                    frame_annotation = annotations.get_frame(frame_num=frame_idx)
+                    builder = frame_item.annotations.builder()
+                    for ann in frame_annotation.annotations:
+                        if ann.object_visible:
+                            builder.add(
+                                annotation_definition=dl.Box(
+                                    top=ann.top, left=ann.left, bottom=ann.bottom, right=ann.right, label=ann.label
+                                )
                             )
-                        )
-                frame_item.annotations.upload(builder)
+                    frame_item.annotations.upload(builder)
         return frames_items_list
 
     def video_to_frames(self, item: dl.Item, context: dl.Context) -> List[dl.Item]:
@@ -283,16 +299,18 @@ class ServiceRunner(dl.BaseServiceRunner):
             logger.info('Running service Video To Frames')
 
             node = context.node
-            self.split_type = node.metadata['customNodeConfig'].get('split_type', 'structural_similarity_sampling')
-            self.dl_output_folder = node.metadata['customNodeConfig']['output_dir']
+            config = node.metadata['customNodeConfig']
+            self.split_type = config.get('split_type', 'structural_similarity_sampling')
+            self.dl_output_folder = config['output_dir']
+            carry_annotations = config.get('carry_annotations', True)
             logger.info(f"split_type: {self.split_type}")
             if self.split_type not in {'structural_similarity_sampling', 'embedding_similarity_sampling'}:
-                self.splitter_arg = node.metadata['customNodeConfig']['splitter_arg']
+                self.splitter_arg = config['splitter_arg']
             else:
-                self.threshold = node.metadata['customNodeConfig']['threshold']
-                self.min_interval = node.metadata['customNodeConfig']['min_interval']
+                self.threshold = config['threshold']
+                self.min_interval = config['min_interval']
                 if self.split_type == 'structural_similarity_sampling':
-                    self.window_size = node.metadata['customNodeConfig']['window_size']
+                    self.window_size = config['window_size']
 
             temp_dir = tempfile.mkdtemp()
             logger.info(f"start downloading video to tmp dir {temp_dir}")
@@ -303,7 +321,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
             frames_list = self.get_frames_list(cap)
             logger.info(f"frames_list: {frames_list}")
-            items = self.upload_frames(item, frames_list, cap, temp_dir)
+            items = self.upload_frames(item, frames_list, cap, temp_dir, carry_annotations)
 
         except Exception as e:
             logger.error(f"Error processing video: {str(e)}")

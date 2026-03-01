@@ -1,8 +1,9 @@
 import datetime
 import logging
 import os
+import subprocess
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Tuple, Dict, Union, Any
 
 import cv2
@@ -21,23 +22,29 @@ class VideoContext:
     n_overlap: int
     input_base_name: str
     video_type: str
-    fourcc: int
     fps: int
-    frame_size: Tuple[int, int]
     total_frames: int
     max_fc_len: int
+    frame_size: Tuple[int, int] = field(default_factory=lambda: (0, 0))
+    fourcc: int = 0
 
 
 class ServiceRunner(dl.BaseServiceRunner):
 
-    @staticmethod
-    def _build_context(node: dl.PipelineNode, cap: cv2.VideoCapture, input_video: str) -> VideoContext:
-        config = node.metadata['customNodeConfig']
-        logger.info(f"node custom config: {config}")
+    # ── Context builder ──────────────────────────────────────
 
-        base_name = os.path.splitext(os.path.basename(input_video))[0]
-        video_type = os.path.splitext(os.path.basename(input_video))[1].replace(".", "")
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    @staticmethod
+    def _build_context(config: Dict[str, Any], item: dl.Item) -> VideoContext:
+        """Build VideoContext from pipeline config and Dataloop item metadata."""
+        system_meta = item.metadata.get('system', {})
+        fps = int(system_meta.get('fps', 30))
+        duration = float(system_meta.get('duration', 0))
+        total_frames = int(duration * fps)
+        width = int(system_meta.get('width', 0))
+        height = int(system_meta.get('height', 0))
+
+        base_name = os.path.splitext(os.path.basename(item.filename))[0]
+        video_type = os.path.splitext(os.path.basename(item.filename))[1].lstrip(".")
 
         ctx = VideoContext(
             split_type=config['split_type'],
@@ -46,17 +53,19 @@ class ServiceRunner(dl.BaseServiceRunner):
             n_overlap=config.get('n_overlap', 0),
             input_base_name=base_name,
             video_type=video_type,
-            fourcc=cv2.VideoWriter_fourcc(*("VP80" if video_type.lower() == "webm" else "mp4v")),
-            fps=int(cap.get(cv2.CAP_PROP_FPS)),
-            frame_size=(int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))),
+            fps=fps,
             total_frames=total_frames,
             max_fc_len=len(str(total_frames)),
+            frame_size=(width, height),
+            fourcc=cv2.VideoWriter_fourcc(*("VP80" if video_type.lower() == "webm" else "mp4v")),
         )
         logger.info(
             f"Video context: base_name={ctx.input_base_name}, type={ctx.video_type}, "
             f"fps={ctx.fps}, size={ctx.frame_size}, frames={ctx.total_frames}"
         )
         return ctx
+
+    # ── Shared helpers ────────────────────────────────────────
 
     @staticmethod
     def get_new_items_metadata(item: dl.Item, sub_videos_intervals: List[List[int]]) -> Dict[str, Any]:
@@ -70,11 +79,28 @@ class ServiceRunner(dl.BaseServiceRunner):
         Returns:
             Dict containing metadata for new items
         """
-        received_org_name = item.metadata.get("origin_video_name", None)
-        received_time = item.metadata.get("time", None)
-        origin_video_name = os.path.basename(item.filename) if received_org_name is None else received_org_name
-        time = datetime.datetime.now().isoformat() if received_time is None else received_time
+        user_meta = item.metadata.get('user', {})
+        origin_video_name = user_meta.get(
+            'origin_video_name',
+            item.metadata.get('origin_video_name', os.path.basename(item.filename))
+        )
+        time = user_meta.get(
+            'time',
+            item.metadata.get('time', datetime.datetime.now().isoformat())
+        )
         return {"origin_video_name": origin_video_name, "time": time, "sub_videos_intervals": sub_videos_intervals}
+
+    @staticmethod
+    def _compute_intervals(ctx: VideoContext) -> List[List[int]]:
+        """Dispatch to the appropriate interval method based on split_type."""
+        if ctx.split_type == "num_frames":
+            return ServiceRunner.get_sub_videos_intervals_by_num_frames(ctx, ctx.splitter_arg)
+        elif ctx.split_type == "num_splits":
+            return ServiceRunner.get_sub_videos_intervals_by_num_splits(ctx, ctx.splitter_arg)
+        elif ctx.split_type == "out_length":
+            return ServiceRunner.get_sub_videos_intervals_by_length(ctx, ctx.splitter_arg)
+        else:
+            raise ValueError(f"Invalid split type: {ctx.split_type}")
 
     @staticmethod
     def get_sub_videos_intervals_by_num_frames(
@@ -173,115 +199,98 @@ class ServiceRunner(dl.BaseServiceRunner):
             num_frames_per_split = int(out_length * ctx.fps)
         return ServiceRunner.get_sub_videos_intervals_by_num_frames(ctx, num_frames_per_split)
 
-    @staticmethod
-    def write_video_segment(
-        ctx: VideoContext, cap: cv2.VideoCapture, annotations: Any,
-        start_frame: int, end_frame: int, i: int, sub_videos_dir: str,
-    ) -> Tuple[str, List[List[Any]]]:
-        """
-        Extract a segment from source video and collect its annotations.
-
-        Args:
-            ctx: Per-call video context
-            cap: OpenCV video capture object
-            annotations: Video annotations
-            start_frame: Starting frame index
-            end_frame: Ending frame index
-            i: Split index
-            sub_videos_dir: Directory to save the output video
-
-        Returns:
-            Tuple of (sub video filename, annotations list)
-        """
-        sub_video_name = f"{ctx.input_base_name}_{str(i).zfill(ctx.max_fc_len)}.{ctx.video_type}"
-        output_video = os.path.join(sub_videos_dir, sub_video_name)
-        logger.info(f"output_video: {output_video}")
-        sub_video_annotations = []
-
-        writer = cv2.VideoWriter(output_video, ctx.fourcc, ctx.fps, ctx.frame_size)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-
-        for sub_video_frame_count, frame_index in enumerate(range(start_frame, end_frame + 1)):
-            frame_annotation = annotations.get_frame(frame_num=frame_index).annotations
-            frame_annotation_data = [
-                {
-                    "top": ann.top,
-                    "left": ann.left,
-                    "bottom": ann.bottom,
-                    "right": ann.right,
-                    "label": ann.label,
-                    "object_visible": ann.object_visible,
-                    "object_id": int(ann.id, 16),
-                }
-                for ann in frame_annotation
-            ]
-            sub_video_annotations.append([sub_video_frame_count, frame_annotation_data])
-            ret, frame = cap.read()
-            if ret:
-                writer.write(frame)
-            else:
-                break
-
-        writer.release()
-        return sub_video_name, sub_video_annotations
+    # ── Segment creation strategies ───────────────────────────
 
     @staticmethod
-    def upload_sub_videos_and_annotations(
+    def _create_opencv_segments(
         ctx: VideoContext,
-        item: dl.Item,
-        sub_videos_annotations_info: Dict[str, List[List[Any]]],
-        sub_videos_intervals: List[List[int]],
+        input_video: str,
         sub_videos_dir: str,
-    ) -> List[dl.Item]:
-        """
-        Upload sub videos and their annotations to the platform.
+        sub_videos_intervals: List[List[int]],
+    ) -> None:
+        """Create sub-video segments via OpenCV frame-by-frame re-encoding."""
+        cap = cv2.VideoCapture(input_video)
+        try:
+            if not cap.isOpened():
+                raise ValueError(f"Failed to open video file: {input_video}")
+            for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
+                out_name = f"{ctx.input_base_name}_{str(i).zfill(ctx.max_fc_len)}.{ctx.video_type}"
+                out_path = os.path.join(sub_videos_dir, out_name)
+                writer = cv2.VideoWriter(out_path, ctx.fourcc, ctx.fps, ctx.frame_size)
+                cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+                for _ in range(start_frame, end_frame + 1):
+                    ret, frame = cap.read()
+                    if ret:
+                        writer.write(frame)
+                    else:
+                        break
+                writer.release()
+        finally:
+            cap.release()
 
-        Args:
-            ctx: Per-call video context
-            item: Source video item
-            sub_videos_annotations_info: Dict mapping sub video names to their annotations
-            sub_videos_intervals: List of frame intervals for each sub video
-            sub_videos_dir: Directory containing the sub videos
+    @staticmethod
+    def _create_ffmpeg_segments(
+        ctx: VideoContext,
+        input_video: str,
+        sub_videos_dir: str,
+        sub_videos_intervals: List[List[int]],
+    ) -> None:
+        """Create sub-video segments via FFmpeg stream-copy (preserves all streams)."""
+        for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
+            start_sec = start_frame / ctx.fps
+            duration_sec = (end_frame - start_frame + 1) / ctx.fps
+            out_name = f"{ctx.input_base_name}_{str(i).zfill(ctx.max_fc_len)}.{ctx.video_type}"
+            out_path = os.path.join(sub_videos_dir, out_name)
+            ServiceRunner._ffmpeg_segment(input_video, out_path, start_sec, duration_sec)
 
-        Returns:
-            List of uploaded sub video items
-        """
-        logger.info(f"Uploading sub videos to {ctx.dl_output_folder}")
-        item_metadata = ServiceRunner.get_new_items_metadata(item, sub_videos_intervals)
-        logger.info(
-            f"uploading from {sub_videos_dir} to {os.path.dirname(ctx.dl_output_folder.rstrip('/')).lstrip('/')}"
-        )
-        sub_videos_items = item.dataset.items.upload(
-            local_path=sub_videos_dir,
-            remote_path="/" + os.path.dirname(ctx.dl_output_folder.rstrip('/')).lstrip('/'),
-            item_metadata=item_metadata,
-        )
-        if isinstance(sub_videos_items, dl.Item):
-            sub_videos_items = [sub_videos_items]
+    @staticmethod
+    def _ffmpeg_segment(input_path: str, output_path: str, start: float, duration: float):
+        """Extract a single segment with FFmpeg using stream-copy."""
+        cmd = [
+            'ffmpeg', '-y',
+            '-ss', f'{start:.3f}',
+            '-t', f'{duration:.3f}',
+            '-i', input_path,
+            '-c', 'copy',
+            '-avoid_negative_ts', 'make_zero',
+            output_path,
+        ]
+        try:
+            subprocess.run(cmd, capture_output=True, text=True, timeout=120, check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"FFmpeg segment failed: {e.stderr}")
+            raise
 
-        sub_videos_items = sorted(list(sub_videos_items), key=lambda x: x.name)
+    # ── Annotation carry-over ─────────────────────────────────
 
-        logger.info("start uploading sub videos and annotations")
-        for sub_video_item in sub_videos_items:
+    @staticmethod
+    def _carry_annotations(
+        item: dl.Item,
+        sub_videos_items: List[dl.Item],
+        sub_videos_intervals: List[List[int]],
+    ) -> None:
+        """Copy frame-level annotations from the source video to each sub-video."""
+        annotations = item.annotations.list()
+        for sub_video_item, (start_frame, end_frame) in zip(sub_videos_items, sub_videos_intervals):
             sub_video_item.fps = item.fps
             builder = sub_video_item.annotations.builder()
-            sub_video_annotations_info = sub_videos_annotations_info[sub_video_item.name]
-            for frame_index, frame_annotation in sub_video_annotations_info:
-                for ann in frame_annotation:
+            for local_idx, orig_idx in enumerate(range(start_frame, end_frame + 1)):
+                for ann in annotations.get_frame(frame_num=orig_idx).annotations:
                     builder.add(
                         annotation_definition=dl.Box(
-                            top=ann["top"],
-                            left=ann["left"],
-                            bottom=ann["bottom"],
-                            right=ann["right"],
-                            label=ann["label"],
+                            top=ann.top,
+                            left=ann.left,
+                            bottom=ann.bottom,
+                            right=ann.right,
+                            label=ann.label,
                         ),
-                        object_visible=ann["object_visible"],
-                        frame_num=frame_index,
-                        object_id=ann["object_id"],
+                        object_visible=ann.object_visible,
+                        frame_num=local_idx,
+                        object_id=int(ann.id, 16),
                     )
             sub_video_item.annotations.upload(annotations=builder)
-        return sub_videos_items
+
+    # ── Entry point ───────────────────────────────────────────
 
     def video_to_videos(self, item: dl.Item, context: dl.Context) -> List[dl.Item]:
         """
@@ -295,58 +304,49 @@ class ServiceRunner(dl.BaseServiceRunner):
             List[dl.Item]: List of created sub-video items
         """
         logger.info('Running service Video To Videos')
-        cap = None
+
+        config = context.node.metadata['customNodeConfig']
+        use_ffmpeg = config.get('use_ffmpeg', False)
+        carry_annotations = config.get('carry_annotations', True)
+
+        local_input_folder = tempfile.mkdtemp(suffix="_input")
+        local_output_folder = tempfile.mkdtemp(suffix="_output")
+
+        logger.info(f"Downloading video to {local_input_folder}")
+        input_video = item.download(local_path=local_input_folder)
 
         try:
-            local_input_folder = tempfile.mkdtemp(suffix="_input")
-            local_output_folder = tempfile.mkdtemp(suffix="_output")
-
-            logger.info(f"Downloading video to {local_input_folder}")
-            input_video = item.download(local_path=local_input_folder)
-
-            cap = cv2.VideoCapture(input_video)
-            if not cap.isOpened():
-                raise ValueError(f"Failed to open video file: {input_video}")
-
-            ctx = self._build_context(context.node, cap, input_video)
-
-            logger.info(f"split type: {ctx.split_type}")
-            if ctx.split_type == "num_frames":
-                sub_videos_intervals = self.get_sub_videos_intervals_by_num_frames(ctx, ctx.splitter_arg)
-            elif ctx.split_type == "num_splits":
-                sub_videos_intervals = self.get_sub_videos_intervals_by_num_splits(ctx, ctx.splitter_arg)
-            elif ctx.split_type == "out_length":
-                sub_videos_intervals = self.get_sub_videos_intervals_by_length(ctx, ctx.splitter_arg)
-            else:
-                raise ValueError(f"Invalid split type: {ctx.split_type}")
-
+            ctx = self._build_context(config, item)
+            sub_videos_intervals = self._compute_intervals(ctx)
             logger.info(f"sub_videos_intervals: {sub_videos_intervals}")
 
-            annotations = item.annotations.list()
-            sub_videos_annotations_info = {}
-            sub_videos_dir = os.path.join(local_output_folder, os.path.basename(ctx.dl_output_folder.rstrip('/')))
-            os.makedirs(sub_videos_dir)
-            for i, (start_frame, end_frame) in enumerate(sub_videos_intervals):
-                sub_video_name, sub_video_annotations = self.write_video_segment(
-                    ctx=ctx,
-                    cap=cap,
-                    annotations=annotations,
-                    start_frame=start_frame,
-                    end_frame=end_frame,
-                    i=i,
-                    sub_videos_dir=sub_videos_dir,
-                )
-                sub_videos_annotations_info[sub_video_name] = sub_video_annotations
-
-            logger.info(f"Uploading sub videos and annotations to {ctx.dl_output_folder}")
-            items = self.upload_sub_videos_and_annotations(
-                ctx, item, sub_videos_annotations_info, sub_videos_intervals, sub_videos_dir
+            sub_videos_dir = os.path.join(
+                local_output_folder, os.path.basename(ctx.dl_output_folder.rstrip('/'))
             )
+            os.makedirs(sub_videos_dir)
+
+            create_segments = self._create_ffmpeg_segments if use_ffmpeg else self._create_opencv_segments
+            create_segments(ctx, input_video, sub_videos_dir, sub_videos_intervals)
+
+            item_metadata = self.get_new_items_metadata(item, sub_videos_intervals)
+            remote_path = "/" + os.path.dirname(ctx.dl_output_folder.rstrip('/')).lstrip('/')
+
+            sub_videos_items = item.dataset.items.upload(
+                local_path=sub_videos_dir,
+                remote_path=remote_path,
+                item_metadata=item_metadata,
+            )
+            if isinstance(sub_videos_items, dl.Item):
+                sub_videos_items = [sub_videos_items]
+            sub_videos_items = sorted(list(sub_videos_items), key=lambda x: x.name)
+
+            if carry_annotations:
+                logger.info("Carrying annotations to sub-videos")
+                self._carry_annotations(item, sub_videos_items, sub_videos_intervals)
+
+            logger.info(f"Uploaded {len(sub_videos_items)} sub-videos to {ctx.dl_output_folder}")
         except Exception as e:
             logger.error(f"Error processing video: {str(e)}")
             raise
-        finally:
-            if cap is not None:
-                cap.release()
-                logger.info("Released video capture resources")
-        return items
+
+        return sub_videos_items
