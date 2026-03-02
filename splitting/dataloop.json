@@ -116,7 +116,7 @@
                 "default": true,
                 "required": false
               },
-              "widget": "dl-toggle"
+              "widget": "dl-checkbox"
             }
           ]
         }
@@ -341,7 +341,7 @@
                 "default": false,
                 "required": false
               },
-              "widget": "dl-toggle"
+              "widget": "dl-checkbox"
             },
             {
               "name": "carry_annotations",
@@ -352,7 +352,7 @@
                 "default": true,
                 "required": false
               },
-              "widget": "dl-toggle"
+              "widget": "dl-checkbox"
             }
           ]
         }
