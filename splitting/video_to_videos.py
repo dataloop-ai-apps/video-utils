@@ -35,7 +35,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
     @staticmethod
     def _build_context(config: Dict[str, Any], item: dl.Item) -> VideoContext:
-        """Build VideoContext from pipeline config and Dataloop item metadata."""
+        """Build VideoContext from pipeline config and DDOE item metadata."""
         system_meta = item.metadata.get('system', {})
         fps = int(system_meta.get('fps', 30))
         duration = float(system_meta.get('duration', 0))

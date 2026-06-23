@@ -112,7 +112,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         Converts a sequence of frames into a video with optional object tracking.
 
         Args:
-            item (dl.Item): The Dataloop item to process
+            item (dl.Item): The DDOE item to process
             context (dl.Context): Pipeline context containing configuration
 
         Returns:

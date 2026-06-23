@@ -37,7 +37,7 @@ class BaseTracker:
 
     Args:
         config (TrackerConfig): Configuration object containing all tracker parameters
-        annotations_builder (dl.AnnotationBuilder, optional): Dataloop annotation builder
+        annotations_builder (dl.AnnotationBuilder, optional): DDOE annotation builder
             instance for creating annotations. Defaults to None.
 
     Attributes:
@@ -51,7 +51,7 @@ class BaseTracker:
         """Initialize base tracker with configuration and optional annotation builder.
 
         Args:
-            annotations_builder (dl.AnnotationBuilder): Dataloop annotation builder
+            annotations_builder (dl.AnnotationBuilder): DDOE annotation builder
             config (TrackerConfig): Configuration object containing all tracker parameters
         """
         self.config = config
