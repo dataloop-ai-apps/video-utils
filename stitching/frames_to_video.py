@@ -69,11 +69,12 @@ class ServiceRunner(dl.BaseServiceRunner):
         
         return sorted(items, key=lambda x: x.name)
 
-    def stitch_and_upload(self, cv_frames: List[np.ndarray], local_output_folder: str) -> dl.Item:
+    def stitch_and_upload(self, received_item: dl.Item, cv_frames: List[np.ndarray], local_output_folder: str) -> dl.Item:
         """
         Stitches frames into a video and uploads it to the dataset.
 
         Args:
+            received_item (dl.Item): The Dataloop item to process
             cv_frames: List of OpenCV frames to stitch together
             local_output_folder (str): Local directory to save the output video
 
@@ -100,10 +101,10 @@ class ServiceRunner(dl.BaseServiceRunner):
                 local_path=output_video_path, remote_path="/" + self.dl_output_dir.lstrip('/')
             )
             video_item.fps = self.fps
-            origin_video_name = item.metadata.get('origin_video_name', None)
+            origin_video_name = received_item.metadata.get('origin_video_name', None)
             if origin_video_name is not None:
                 video_item.metadata['origin_video_name'] = origin_video_name
-            origin_video_item_id = item.metadata.get('origin_video_item_id', None)
+            origin_video_item_id = received_item.metadata.get('origin_video_item_id', None)
             if origin_video_item_id is not None:
                 video_item.metadata['origin_video_item_id'] = origin_video_item_id
             video_item.update()
@@ -139,7 +140,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         images_files = [os.path.join(local_input_folder, "items", item.filename.lstrip("/")) for item in items]
         logger.info("convert to cv frames")
         cv_frames = [cv2.imread(img_path) for img_path in images_files]
-        video_item = self.stitch_and_upload(cv_frames, local_output_folder)
+        video_item = self.stitch_and_upload(received_item=item, cv_frames=cv_frames, local_output_folder=local_output_folder)
         builder = video_item.annotations.builder()
         self.tracker = ByteTrackTracker(
             annotations_builder=builder, frame_rate=self.fps, config=self.trackers_config
