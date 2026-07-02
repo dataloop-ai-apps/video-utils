@@ -295,6 +295,9 @@ class ServiceRunner(dl.BaseServiceRunner):
         origin_video_name = item.metadata.get('origin_video_name', None)
         if origin_video_name is not None:
             video_item.metadata['origin_video_name'] = origin_video_name
+        origin_video_item_id = item.metadata.get('origin_video_item_id', None)
+        if origin_video_item_id is not None:
+            video_item.metadata['origin_video_item_id'] = origin_video_item_id
         video_item.update()
         logger.info("uploading annotations to video")
         self.upload_annotations(video_item, merged_video_annotations, merged_video_frames)

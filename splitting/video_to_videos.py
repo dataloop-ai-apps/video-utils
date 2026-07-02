@@ -88,7 +88,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             'time',
             item.metadata.get('time', datetime.datetime.now().isoformat())
         )
-        return {"origin_video_name": origin_video_name, "time": time, "sub_videos_intervals": sub_videos_intervals}
+        return {"origin_video_name": origin_video_name, "origin_video_item_id": item.id, "time": time, "sub_videos_intervals": sub_videos_intervals}
 
     @staticmethod
     def _compute_intervals(ctx: VideoContext) -> List[List[int]]:
