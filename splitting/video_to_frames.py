@@ -45,11 +45,15 @@ class ServiceRunner(dl.BaseServiceRunner):
             'time',
             item.metadata.get('time', datetime.datetime.now().isoformat())
         )
+        origin_video_item_id = user_meta.get(
+            'origin_video_item_id',
+            item.metadata.get('origin_video_item_id', item.id)
+        )
         fps = user_meta.get('fps', item.metadata.get('fps'))
 
         return {
             "origin_video_name": origin_video_name,
-            "origin_video_item_id": item.id,
+            "origin_video_item_id": origin_video_item_id,
             "time": time,
             "fps": fps,
         }
