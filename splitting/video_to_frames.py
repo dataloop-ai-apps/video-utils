@@ -36,18 +36,16 @@ class ServiceRunner(dl.BaseServiceRunner):
         Returns:
             Dict containing metadata for new items
         """
-        user_meta = item.metadata.get('user', {})
-        origin_video_name = user_meta.get(
-            'origin_video_name',
-            item.metadata.get('origin_video_name', os.path.basename(item.filename))
+        origin_video_name = item.metadata.get(
+            'origin_video_name', os.path.basename(item.filename)
         )
+        origin_video_item_id = item.metadata.get(
+            'origin_video_item_id', item.id
+        )
+        user_meta = item.metadata.get('user', {})
         time = user_meta.get(
             'time',
             item.metadata.get('time', datetime.datetime.now().isoformat())
-        )
-        origin_video_item_id = user_meta.get(
-            'origin_video_item_id',
-            item.metadata.get('origin_video_item_id', item.id)
         )
         fps = user_meta.get('fps', item.metadata.get('fps'))
 
