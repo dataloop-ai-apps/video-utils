@@ -292,6 +292,9 @@ class ServiceRunner(dl.BaseServiceRunner):
             local_path=output_video_path, remote_path="/" + self.dl_output_dir.lstrip('/')
         )
         video_item.fps = fps
+        origin_video_name = item.metadata.get('origin_video_name', None)
+        if origin_video_name is not None:
+            video_item.metadata['origin_video_name'] = origin_video_name
         video_item.update()
         logger.info("uploading annotations to video")
         self.upload_annotations(video_item, merged_video_annotations, merged_video_frames)
