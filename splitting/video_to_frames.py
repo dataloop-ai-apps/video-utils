@@ -49,6 +49,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         return {
             "origin_video_name": origin_video_name,
+            "origin_video_item_id": item.id,
             "time": time,
             "fps": fps,
         }
