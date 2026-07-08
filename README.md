@@ -62,7 +62,7 @@ The Application provides the following splitting functions:
 
 All functions preserve the original video's annotations and metadata, creating new items with proper references to the source video. The metadata helps track the relationship between the original video and its derived items, which is particularly useful for stitching operations.
 
-> **Note on FFmpeg mode:** When `use_ffmpeg` is enabled, FFmpeg must be available on the runner image. The default Dataloop runner images include FFmpeg. This mode uses stream-copy (`-c copy`) so there is no re-encoding — splits are near-instant and lossless. Annotation carry-over is supported in both modes via the `carry_annotations` toggle.
+> **Note on FFmpeg mode:** When `use_ffmpeg` is enabled, FFmpeg must be available on the runner image. The default DDOE runner images include FFmpeg. This mode uses stream-copy (`-c copy`) so there is no re-encoding — splits are near-instant and lossless. Annotation carry-over is supported in both modes via the `carry_annotations` toggle.
 
 
 ## [Video Utils] - Stitching

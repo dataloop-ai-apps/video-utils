@@ -45,7 +45,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         Check if all items are from the same video split.
 
         Args:
-            items: List of Dataloop items to check
+            items: List of DDOE items to check
 
         Returns:
             bool: True if all items are from same split, False otherwise
@@ -74,7 +74,7 @@ class ServiceRunner(dl.BaseServiceRunner):
             writer: VideoWriter object for output video
             input_files: List of input video file paths
             sub_videos_intervals: List of frame intervals for each sub-video
-            items: List of Dataloop items corresponding to input videos
+            items: List of DDOE items corresponding to input videos
 
         Returns:
             Tuple containing merged annotations and frames
@@ -121,7 +121,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         Args:
             writer: VideoWriter object for output video
             input_files: List of input video file paths
-            items: List of Dataloop items corresponding to input videos
+            items: List of DDOE items corresponding to input videos
 
         Returns:
             Tuple containing merged annotations and frames
@@ -196,7 +196,7 @@ class ServiceRunner(dl.BaseServiceRunner):
         Uploads annotations to video item using ByteTrackTracker.
 
         Args:
-            video_item: Dataloop video item to upload annotations to
+            video_item: DDOE video item to upload annotations to
             merged_video_annotations: List of annotations per frame
             merged_video_frames: List of video frames
         """
@@ -215,7 +215,7 @@ class ServiceRunner(dl.BaseServiceRunner):
 
         Args:
             first_input_file: Path to first input video file
-            first_item: First Dataloop video item
+            first_item: First DDOE video item
             is_same_split: Whether videos are from same split
             local_output_folder: Local directory to save the output video
 
