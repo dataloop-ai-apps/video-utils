@@ -443,7 +443,7 @@
         "moduleName": "video-to-videos",
         "runtime": {
           "podType": "regular-m",
-          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/video-utils:0.0.4",
+          "runnerImage": "hub.dataloop.ai/dtlpy-runner-images/cpu:python3.13_full_bci_latest",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},
